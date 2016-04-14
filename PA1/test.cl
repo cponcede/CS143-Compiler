@@ -3,6 +3,9 @@
    X's respresent live cells, dots represent dead cells,
    no error checking is done *)
 class CellularAutomaton inherits IO {
+
+    SELF_TYPE Int position *)
+
     population_map : String;
    
     init(map : String) : SELF_TYPE {

@@ -99,7 +99,7 @@ darrow  =>
   * One line comments should be skipped.
   */
 
-"--".*\n { curr_lineno++; } 
+{ONE_LN_COMMENT} { curr_lineno++; } 
 
  /*
   *  The multiple-character operators.
@@ -267,7 +267,10 @@ darrow  =>
   return TYPEID; 
 }
 
-{OBJECTID} {  cool_yylval.symbol = idtable.add_string(yytext); }
+{OBJECTID} {
+  cool_yylval.symbol = idtable.add_string(yytext);
+  return OBJECTID;
+}
 
   /* Comment Handling Section. */
 
@@ -326,6 +329,7 @@ darrow  =>
  /*
   * Error-catching rule
   */
+
 {ERROR} {
   cool_yylval.error_msg = yytext;
   return ERROR;
