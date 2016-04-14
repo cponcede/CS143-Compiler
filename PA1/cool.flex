@@ -53,7 +53,7 @@ extern YYSTYPE cool_yylval;
  */
 
 DIGIT  [0-9]
-LETTER   ([a-z]|[A-Z])
+LETTER   [a-zA-Z]
 WHITESPACE " "|"\n"|"\f"|"\r"|"\t"|"\v"
 ONE_LN_COMMENT "--".*\n
 OPEN_COMMENT  "(*"
@@ -79,8 +79,8 @@ INT_CONST  DIGIT+
 TRUE   t(R|r)(U|u)(E|e)
 FALSE    f(A|a)(L|l)(S|s)(E|e)
 BOOL_CONST TRUE | FALSE
-TYPEID   [A-Z](LETTER|DIGIT|_)*
-OBJECTID [a-z](LETTER|DIGIT|_)*
+TYPEID   [A-Z]({LETTER}|{DIGIT}|_)*
+OBJECTID [a-z]({LETTER}|{DIGIT}|_)*
 ASSIGN   <-
 NOT    (N|n)(O|o)(T|t)
 LE   <=
@@ -163,12 +163,14 @@ darrow  =>
   */
 \" {
    BEGIN(string);
+   string_buf_index = 0;
 }
 
 <string>\" {
    BEGIN(normal);
-   string_buf_index = 0;
-   return 0;
+   string_buf[string_buf_index] = 0;
+   cool_yylval.symbol = stringtable.add_string(string_buf);
+   return STR_CONST;
 }
 
 <string>\\. {
@@ -183,6 +185,11 @@ darrow  =>
     string_buf[string_buf_index++] = '\f';    
   else
     string_buf[string_buf_index++] = ch;
+  if (string_buf_index == MAX_STR_CONST) {
+    cool_yylval.error_msg = "String constant too long";
+    BEGIN(invalid_string);
+    return ERROR;
+  }
 }
 
 <string>'\0' {
@@ -195,6 +202,13 @@ darrow  =>
   /* Check for escaped newlines. */
   if (string_buf[string_buf_index - 1] == '\\') {
     string_buf[string_buf_index++] = '\n';
+
+    /* Check to ensure string is not too long. */
+    if (string_buf_index == MAX_STR_CONST) {
+       cool_yylval.error_msg = "String constant too long";
+       BEGIN(invalid_string);
+       return ERROR;
+    }     
     return 0;
   }
   cool_yylval.error_msg = "Unterminated string constant";
@@ -210,6 +224,11 @@ darrow  =>
 
 <string>. {
   string_buf[string_buf_index++] = yytext[0];
+  if (string_buf_index == MAX_STR_CONST) {
+    cool_yylval.error_msg = "String constant too long";
+    BEGIN(invalid_string);
+    return ERROR;
+  }
 }
 
 <invalid_string>'\n' {
@@ -244,7 +263,7 @@ darrow  =>
   * Identifiers
   */
 
-{TYPEID} {  
+{TYPEID} {
   cool_yylval.symbol = idtable.add_string(yytext);
   return TYPEID; 
 }
@@ -261,7 +280,6 @@ darrow  =>
 }
 
 <comment>{NEWLINE} {
-  printf("Incrementing the line number\n");
   curr_lineno++;
 }
 
