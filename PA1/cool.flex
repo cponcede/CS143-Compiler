@@ -52,43 +52,52 @@ extern YYSTYPE cool_yylval;
  * Define names for regular expressions here.
  */
 
-DIGIT  [0-9]
-LETTER   [a-zA-Z]
-WHITESPACE " "|"\n"|"\f"|"\r"|"\t"|"\v"
-ONE_LN_COMMENT "--".*\n
-OPEN_COMMENT  "(*"
-CLOSE_COMMENT "*)"
-CLASS    (C|c)(L|l)(A|a)(S|s)(S|s)
-ELSE   (E|e)(L|l)(S|s)(E|e)
-FI   (F|f)(I|i)
-IF   (I|i)(F|f)
-IN   (I|i)(N|n)
-INHERITS (I|i)(N|n)(H|h)(E|e)(R|r)(I|i)(T|t)(S|s)
-LET    (L|l)(E|e)(T|t)
-LOOP   (L|l)(O|o)(O|o)(P|p)
-POOL   (P|p)(O|o)(O|o)(L|l)
-THEN   (T|t)(H|h)(E|e)(N|n)
-WHILE    (W|w)(H|h)(I|i)(L|l)(E|e)
-CASE   (C|c)(A|a)(S|s)(E|e)
-ESAC   (E|e)(S|s)(A|a)(C|c)
-OF   (O|o)|(F|f)
-NEW    (N|n)(E|e)(W|w)
-ISVOID   (I|i)(S|s)(V|v)(O|o)(I|i)(D|d)
-STR_CONST  \"(.*)\"
-INT_CONST  {DIGIT}+
-TRUE   t(R|r)(U|u)(E|e)
-FALSE    f(A|a)(L|l)(S|s)(E|e)
-TYPEID   [A-Z]({LETTER}|{DIGIT}|_)*
-OBJECTID [a-z]({LETTER}|{DIGIT}|_)*
-ASSIGN   <-
-NOT    (N|n)(O|o)(T|t)
-LE   <=
-NEWLINE  \n
-ERROR    . 
-darrow  =>
+DIGIT		[0-9]
+LETTER		[a-zA-Z]
+WHITESPACE 	" "|"\n"|"\f"|"\r"|"\t"|"\v"
+ONE_LN_COMMENT 	"--".*\n
+OPEN_COMMENT  	"(*"
+CLOSE_COMMENT 	"*)"
+CLASS    	(C|c)(L|l)(A|a)(S|s)(S|s)
+ELSE   		(E|e)(L|l)(S|s)(E|e)
+FI   		(F|f)(I|i)
+IF   		(I|i)(F|f)
+IN   		(I|i)(N|n)
+INHERITS 	(I|i)(N|n)(H|h)(E|e)(R|r)(I|i)(T|t)(S|s)
+LET    		(L|l)(E|e)(T|t)
+LOOP   		(L|l)(O|o)(O|o)(P|p)
+POOL   		(P|p)(O|o)(O|o)(L|l)
+THEN   		(T|t)(H|h)(E|e)(N|n)
+WHILE    	(W|w)(H|h)(I|i)(L|l)(E|e)
+CASE   		(C|c)(A|a)(S|s)(E|e)
+ESAC   		(E|e)(S|s)(A|a)(C|c)
+OF     		(O|o)(F|f)
+NEW		(N|n)(E|e)(W|w)
+ISVOID   	(I|i)(S|s)(V|v)(O|o)(I|i)(D|d)
+STR_CONST  	\"(.*)\"
+INT_CONST  	{DIGIT}+
+TRUE   		t(R|r)(U|u)(E|e)
+FALSE    	f(A|a)(L|l)(S|s)(E|e)
+TYPEID   	[A-Z]({LETTER}|{DIGIT}|_)*
+OBJECTID 	[a-z]({LETTER}|{DIGIT}|_)*
+ASSIGN   	<-
+NOT    		(N|n)(O|o)(T|t)
+LE   		<=
+DARROW 		=>
+NEWLINE  	\n
+ERROR    	.
 
+ /* Start conditions used for lexing.
+  * normal - inclusive and indicates no special condition
+  * comment - exclusive and indicates that we are currently in a comment.
+  * string - exclusive and indicates that we are currently in a string.
+  * invalid_string - exclusive and indicates that we are in a string that
+  *                  has already been invalidated due to a bad character
+  *                  or length.
+  */
 %s normal
 %x comment string invalid_string
+
 %%
 
  /*
@@ -96,7 +105,7 @@ darrow  =>
   */
 
  /*
-  * One line comments should be skipped.
+  * One line comments should be skipped and the line number updated.
   */
 
 {ONE_LN_COMMENT} { curr_lineno++; } 
@@ -105,7 +114,7 @@ darrow  =>
   *  The multiple-character operators.
   */
 
-{darrow}  { return (DARROW); }
+{DARROW}  { return (DARROW); }
 
 {ASSIGN}  { return (ASSIGN); }
 
@@ -160,11 +169,14 @@ darrow  =>
   *  \n \t \b \f, the result is c.
   *
   */
+
+ /* Enter string mode when first " is encountered */
 \" {
    BEGIN(string);
    string_buf_index = 0;
 }
 
+ /* Enter normal mode when second " is encountered. */
 <string>\" {
    BEGIN(normal);
    string_buf[string_buf_index] = 0;
@@ -172,6 +184,7 @@ darrow  =>
    return STR_CONST;
 }
 
+ /* Handle special characters within strings. */ 
 <string>\\. {
   char ch = yytext[1];
   if (ch == 'n')
@@ -191,36 +204,42 @@ darrow  =>
   }
 }
 
+ /* Catch null character within string error. */
 <string>'\0' {
   cool_yylval.error_msg = "String contains null character";
   BEGIN(invalid_string);
   return ERROR;
 }
 
-<string>'\n' {
+ /* Ensure newlines are escaped within strings. */
+<string>{NEWLINE} {
   /* Check for escaped newlines. */
   if (string_buf[string_buf_index - 1] == '\\') {
+    string_buf_index--;
     string_buf[string_buf_index++] = '\n';
-
+    curr_lineno++;
     /* Check to ensure string is not too long. */
     if (string_buf_index == MAX_STR_CONST) {
        cool_yylval.error_msg = "String constant too long";
        BEGIN(invalid_string);
        return ERROR;
     }     
-    return 0;
+  } else {
+    cool_yylval.error_msg = "Unterminated string constant";
+    curr_lineno++;
+    BEGIN(normal);
+    return ERROR;
   }
-  cool_yylval.error_msg = "Unterminated string constant";
-  BEGIN(normal);
-  return ERROR;
 }
 
+ /* Catch EOF within string error. */
 <string><<EOF>> {
   cool_yylval.error_msg = "Unterminated string constant";
   BEGIN(normal);  
   return ERROR;
 }
 
+ /* All characters not accounted for above are just added to the string. */
 <string>. {
   string_buf[string_buf_index++] = yytext[0];
   if (string_buf_index == MAX_STR_CONST) {
@@ -230,15 +249,27 @@ darrow  =>
   }
 }
 
-<invalid_string>'\n' {
-  BEGIN(normal);
+ /* Updated line number when escaped newline is encountered within
+  * an invalid string.
+  */
+<invalid_string>\\{NEWLINE} {
+  curr_lineno++;
 }
 
-<invalid_string>. { }
+ /* Leave invalid_string start condition once first unescaped newline
+  * or end quotes are found. 
+  */
+<invalid_string>{NEWLINE} {
+  curr_lineno++;
+  BEGIN(normal);
+}
 
 <invalid_string>\" {
   BEGIN(normal);
 }
+
+ /* Ignore charaters of invalid strings until we reach the end. */
+<invalid_string>. { }
 
  /*
   * Boolean and integer constants
@@ -254,7 +285,7 @@ darrow  =>
 }
 
 {INT_CONST} { 
-  cool_yylval.symbol = inttable.add_int(atoi(yytext));
+  cool_yylval.symbol = inttable.add_string(yytext);
   return INT_CONST; 
 }
 
@@ -272,35 +303,47 @@ darrow  =>
   return OBJECTID;
 }
 
-  /* Comment Handling Section. */
+ /* Comment Handling Section. */
 
+ /* Track comment depth to handle nested comments. */
 <comment>{OPEN_COMMENT} {  comment_depth++;  }
 
+ /* Enter comment start condition when first (* encountered. */
 {OPEN_COMMENT} {  
   BEGIN(comment);
   comment_depth++;
 }
 
+ /* Account for newlines in comments. */
 <comment>{NEWLINE} {
   curr_lineno++;
 }
 
+ /* Catch invalid EOFs within comments. */
 <comment><<EOF>> {
   cool_yylval.error_msg = "EOF in comment";
   BEGIN(normal);
   return ERROR;
 }
 
+ /* Decrement comment depth when *) encountered and leave
+  * comment mode if comment_depth reaches 0.
+  */
 <comment>{CLOSE_COMMENT} {
   comment_depth--;
   if (comment_depth == 0) BEGIN(normal);
 }
 
+ /*
+  * If *) encountered when not in a comment, return
+  * error.
+  */
 {CLOSE_COMMENT} {
   cool_yylval.error_msg = "Unmatched *)";
   return ERROR;
 }
 
+ /* Ignore actual characters within comments. */
 <comment>. {
   /* Do Nothing. */
 }
@@ -323,11 +366,16 @@ darrow  =>
 ":" { return ':'; }
 ";" { return ';'; }
 "," { return ','; }
+"{" { return '{'; }
+"}" { return '}'; }
 
+ /* Ignore whitespace. */
 {WHITESPACE} {}
 
  /*
-  * Error-catching rule
+  * Error-catching rule. Will match any character that
+  * does not match any other rule while in the normal
+  * start condition.
   */
 
 {ERROR} {
