@@ -75,10 +75,9 @@ OF   (O|o)|(F|f)
 NEW    (N|n)(E|e)(W|w)
 ISVOID   (I|i)(S|s)(V|v)(O|o)(I|i)(D|d)
 STR_CONST  \"(.*)\"
-INT_CONST  DIGIT+
+INT_CONST  {DIGIT}+
 TRUE   t(R|r)(U|u)(E|e)
 FALSE    f(A|a)(L|l)(S|s)(E|e)
-BOOL_CONST TRUE | FALSE
 TYPEID   [A-Z]({LETTER}|{DIGIT}|_)*
 OBJECTID [a-z]({LETTER}|{DIGIT}|_)*
 ASSIGN   <-
@@ -312,6 +311,7 @@ darrow  =>
 "+" { return '+'; }
 "-" { return '-'; }
 "*" { return '*'; }
+"=" { return '='; }
 "/" { return '/'; }
 "~" { return '~'; }
 "<" { return '<'; }
