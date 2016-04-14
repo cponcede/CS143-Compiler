@@ -1,17 +1,41 @@
-user: <jakerach>
-user: <cponcede>
+user: <jakerach> user: <cponcede>
 
 WRITEUP FOR ASSIGNMENT 1:
 
 Design Decisions:
 
-The design for most of our lexer was pretty straightforward. We created regular expressions for each identifier and keyword. The difficulty came in dealing with strings and comments. To simplify strings and comments, we used start conditions. 
+The design for most of our lexer was pretty straightforward. We created regular
+expressions for each identifier and keyword. The difficulty came in dealing with
+strings and comments. To simplify strings and comments, we used start
+conditions.
 
-For comments, we had a single start condition called comment. One line comments did not need this start condition, and from now on we will assume that comments refers to the the multi-line form. When the lexer recognizes a "(*" token in the normal start condition, it moves into the comment start condition and increment our comment_depth counter. Now, every time in the comment start condition we see a (* we increment our comment_depth, and every time we see a *) we decrement. If we see a *) and our comment_depth drops to zero, we know we are at the end of a comment, and we can leave our comment start condition. All other characters in the comment are ignored with a . conditon. With this approach, it is easy to identify an extra *) (if we see it while in normal condition, it doesn't have a corresponding (* ), as well as an unmatched (* (if we see EOF while in a comment, we know that we never matched a parenthesis).
+For comments, we had a single start condition called comment. One line comments
+did not need this start condition, and from now on we will assume that comments
+refers to the the multi-line form. When the lexer recognizes a "(*" token in the
+normal start condition, it moves into the comment start condition and increment
+our comment_depth counter. Now, every time in the comment start condition we see
+a (* we increment our comment_depth, and every time we see a *) we decrement. If
+we see a *) and our comment_depth drops to zero, we know we are at the end of a
+comment, and we can leave our comment start condition. All other characters in
+the comment are ignored with a . conditon. With this approach, it is easy to
+identify an extra *) (if we see it while in normal condition, it doesn't have a
+corresponding (* ), as well as an unmatched (* (if we see EOF while in a
+comment, we know that we never matched a parenthesis).
 
-Now that we have taken care of comments, we must deal with strings. Here the special cases are more varied. We have two start conditions: string and invalid_string. When we see a quotation mark in normal mode, we switch to the string mode, and when we see another quotation in string mode, we switch back. In this mode, we look for any sequence with a \ in it. These strings we make sure to escape in code, so that we do not leave unescaped strings. We also look for invalid characters in a string (\0, EOF, etc) with regex, handle them accordingly, and switch into invalid_string mode. This mode just ignores all characters until we see another quotation so we don't have to deal with all the string special cases in a string that is already error filled.
+Now that we have taken care of comments, we must deal with strings. Here the
+special cases are more varied. We have two start conditions: string and
+invalid_string. When we see a quotation mark in normal mode, we switch to the
+string mode, and when we see another quotation in string mode, we switch back.
+In this mode, we look for any sequence with a \ in it. These strings we make
+sure to escape in code, so that we do not leave unescaped strings. We also look
+for invalid characters in a string (\0, EOF, etc) with regex, handle them
+accordingly, and switch into invalid_string mode. This mode just ignores all
+characters until we see another quotation so we don't have to deal with all the
+string special cases in a string that is already error filled.
 
 
 Completeness:
 
+We know that our lexer is complete since our error condition is just ".". This
+means that we will
 
