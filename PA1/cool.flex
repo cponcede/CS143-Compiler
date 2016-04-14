@@ -33,6 +33,7 @@ extern FILE *fin; /* we read from this file */
 
 char string_buf[MAX_STR_CONST]; /* to assemble string constants */
 char *string_buf_ptr;
+size_t string_buf_index = 0;
 
 extern int curr_lineno;
 extern int verbose_flag;
@@ -88,7 +89,7 @@ ERROR    .
 darrow  =>
 
 %s normal
-%x comment string
+%x comment string invalid_string
 %%
 
  /*
@@ -160,10 +161,65 @@ darrow  =>
   *  \n \t \b \f, the result is c.
   *
   */
-{STR_CONST} {
-  printf("\nIN A STR CONST\n");
-  cool_yylval.symbol = stringtable.add_string(yytext);
-  return STR_CONST; 
+\" {
+   BEGIN(string);
+}
+
+<string>\" {
+   BEGIN(normal);
+   string_buf_index = 0;
+   return 0;
+}
+
+<string>\\. {
+  char ch = yytext[1];
+  if (ch == 'n')
+    string_buf[string_buf_index++] = '\n';
+  else if (ch == 't')
+    string_buf[string_buf_index++] = '\t';    
+  else if (ch == 'b')
+    string_buf[string_buf_index++] = '\b';    
+  else if (ch == 'f')
+    string_buf[string_buf_index++] = '\f';    
+  else
+    string_buf[string_buf_index++] = ch;
+}
+
+<string>'\0' {
+  cool_yylval.error_msg = "String contains null character";
+  BEGIN(invalid_string);
+  return ERROR;
+}
+
+<string>'\n' {
+  /* Check for escaped newlines. */
+  if (string_buf[string_buf_index - 1] == '\\') {
+    string_buf[string_buf_index++] = '\n';
+    return 0;
+  }
+  cool_yylval.error_msg = "Unterminated string constant";
+  BEGIN(normal);
+  return ERROR;
+}
+
+<string><<EOF>> {
+  cool_yylval.error_msg = "Unterminated string constant";
+  BEGIN(normal);  
+  return ERROR;
+}
+
+<string>. {
+  string_buf[string_buf_index++] = yytext[0];
+}
+
+<invalid_string>'\n' {
+  BEGIN(normal);
+}
+
+<invalid_string>. { }
+
+<invalid_string>\" {
+  BEGIN(normal);
 }
 
  /*
