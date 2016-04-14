@@ -197,22 +197,22 @@ darrow  =>
   return ERROR;
 }
 
-<string>'\n' {
+<string>{NEWLINE} {
   /* Check for escaped newlines. */
   if (string_buf[string_buf_index - 1] == '\\') {
+    string_buf_index--;
     string_buf[string_buf_index++] = '\n';
-
     /* Check to ensure string is not too long. */
     if (string_buf_index == MAX_STR_CONST) {
        cool_yylval.error_msg = "String constant too long";
        BEGIN(invalid_string);
        return ERROR;
     }     
-    return 0;
+  } else {
+    cool_yylval.error_msg = "Unterminated string constant";
+    BEGIN(normal);
+    return ERROR;
   }
-  cool_yylval.error_msg = "Unterminated string constant";
-  BEGIN(normal);
-  return ERROR;
 }
 
 <string><<EOF>> {
