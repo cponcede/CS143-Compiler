@@ -1,0 +1,163 @@
+#name "test1.cl"
+#5 OBJECTID the
+#5 CASE
+#5 OBJECTID and
+#5 OBJECTID recognition
+#5 OF
+#5 OBJECTID keywords
+#5 ERROR "Unmatched *)"
+#8 CLASS
+#9 CLASS
+#10 CLASS
+#11 ELSE
+#12 ELSE
+#13 ELSE
+#14 FI
+#15 FI
+#16 FI
+#17 IF
+#18 IF
+#19 IF
+#20 IN
+#21 IN
+#22 IN
+#23 INHERITS
+#24 INHERITS
+#25 INHERITS
+#26 LOOP
+#27 LOOP
+#28 LOOP
+#29 POOL
+#30 POOL
+#31 POOL
+#32 THEN
+#33 THEN
+#34 THEN
+#35 WHILE
+#36 WHILE
+#37 WHILE
+#38 CASE
+#39 CASE
+#40 CASE
+#41 ESAC
+#42 ESAC
+#43 ESAC
+#44 OF
+#45 OF
+#46 OF
+#47 NEW
+#48 NEW
+#49 NEW
+#50 ISVOID
+#51 ISVOID
+#52 ISVOID
+#53 NOT
+#54 NOT
+#55 NOT
+#56 LET
+#57 LET
+#58 LET
+#63 BOOL_CONST true
+#64 BOOL_CONST true
+#65 TYPEID True
+#66 TYPEID TRUE
+#68 BOOL_CONST false
+#69 BOOL_CONST false
+#70 TYPEID FALSE
+#71 TYPEID FAlse
+#74 '='
+#75 '{'
+#76 '}'
+#77 '('
+#78 ')'
+#79 ':'
+#80 ';'
+#81 '.'
+#82 '@'
+#83 ','
+#84 '+'
+#85 '-'
+#86 '*'
+#87 '/'
+#88 '~'
+#89 '<'
+#90 DARROW
+#91 ASSIGN
+#92 LE
+#94 '='
+#94 '{'
+#94 '}'
+#94 '('
+#94 ')'
+#94 ':'
+#94 ';'
+#94 '.'
+#94 '@'
+#94 ','
+#94 '+'
+#94 '-'
+#94 '*'
+#94 '/'
+#94 '~'
+#94 '<'
+#94 DARROW
+#94 ASSIGN
+#94 LE
+#99 OBJECTID should
+#99 NOT
+#99 OBJECTID comment
+#99 ERROR "Unmatched *)"
+#100 INT_CONST 0
+#101 INT_CONST 0242
+#102 INT_CONST 7849317480923
+#103 INT_CONST 8902
+#104 '-'
+#104 INT_CONST 1239
+#105 '-'
+#105 INT_CONST 3812940
+#110 OBJECTID thisif
+#111 OBJECTID fiThen
+#112 TYPEID FiElse
+#113 TYPEID Inheritsif
+#114 INT_CONST 1
+#114 OBJECTID hey
+#115 OBJECTID hey1
+#116 TYPEID Hey1
+#117 INT_CONST 1
+#117 TYPEID Hey
+#118 INT_CONST 1
+#118 OBJECTID hh1
+#119 INT_CONST 90
+#119 OBJECTID hg0
+#121 '('
+#121 '*'
+#121 OBJECTID this
+#121 OBJECTID is
+#121 NOT
+#121 OBJECTID a
+#121 OBJECTID comment
+#121 '*'
+#121 ')'
+#123 '-'
+#123 '-'
+#123 TYPEID This
+#123 OBJECTID is
+#123 NOT
+#123 OBJECTID a
+#123 OBJECTID comment
+#123 OBJECTID either
+#129 STR_CONST ""
+#130 STR_CONST "a"
+#131 STR_CONST "a"
+#133 ERROR "Unterminated string constant"
+#133 OBJECTID error
+#134 ERROR "Unterminated string constant"
+#135 STR_CONST "no error \nno error"
+#136 STR_CONST "no error \n no error"
+#137 STR_CONST "a \b b \f f f\f b\b"
+#140 STR_CONST "This quote \nhas a null 0 \nbut finishes here"
+#154 ERROR "String constant too long"
+#177 ERROR "String constant too long"
+#189 STR_CONST "\n"
+#192 STR_CONST " \n"
+#200 STR_CONST "0x00"

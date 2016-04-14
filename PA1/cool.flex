@@ -71,8 +71,8 @@ THEN   (T|t)(H|h)(E|e)(N|n)
 WHILE    (W|w)(H|h)(I|i)(L|l)(E|e)
 CASE   (C|c)(A|a)(S|s)(E|e)
 ESAC   (E|e)(S|s)(A|a)(C|c)
-OF   (O|o)|(F|f)
-NEW    (N|n)(E|e)(W|w)
+OF     (O|o)(F|f)
+NEW	(N|n)(E|e)(W|w)
 ISVOID   (I|i)(S|s)(V|v)(O|o)(I|i)(D|d)
 STR_CONST  \"(.*)\"
 INT_CONST  {DIGIT}+
@@ -254,7 +254,7 @@ darrow  =>
 }
 
 {INT_CONST} { 
-  cool_yylval.symbol = inttable.add_int(atoi(yytext));
+  cool_yylval.symbol = inttable.add_string(yytext);
   return INT_CONST; 
 }
 
@@ -323,6 +323,8 @@ darrow  =>
 ":" { return ':'; }
 ";" { return ';'; }
 "," { return ','; }
+"{" { return '{'; }
+"}" { return '}'; }
 
 {WHITESPACE} {}
 
