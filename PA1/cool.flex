@@ -202,6 +202,7 @@ darrow  =>
   if (string_buf[string_buf_index - 1] == '\\') {
     string_buf_index--;
     string_buf[string_buf_index++] = '\n';
+    curr_lineno++;
     /* Check to ensure string is not too long. */
     if (string_buf_index == MAX_STR_CONST) {
        cool_yylval.error_msg = "String constant too long";
@@ -210,6 +211,7 @@ darrow  =>
     }     
   } else {
     cool_yylval.error_msg = "Unterminated string constant";
+    curr_lineno++;
     BEGIN(normal);
     return ERROR;
   }
@@ -230,15 +232,21 @@ darrow  =>
   }
 }
 
-<invalid_string>'\n' {
-  BEGIN(normal);
+ /* Escaped newline within an invalid string. */
+<invalid_string>\\{NEWLINE} {
+  curr_lineno++;
 }
 
-<invalid_string>. { }
+<invalid_string>{NEWLINE} {
+  curr_lineno++;
+  BEGIN(normal);
+}
 
 <invalid_string>\" {
   BEGIN(normal);
 }
+
+<invalid_string>. { }
 
  /*
   * Boolean and integer constants

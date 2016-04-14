@@ -149,57 +149,15 @@
 #129 STR_CONST ""
 #130 STR_CONST "a"
 #131 STR_CONST "a"
-#132 ERROR "Unterminated string constant"
-#132 OBJECTID error
-#132 ERROR "Unterminated string constant"
-#132 STR_CONST "no error \nno error"
-#133 STR_CONST "no error \n no error"
-#134 STR_CONST "a \b b \f f f\f b\b"
-#135 STR_CONST "This quote \nhas a null 0 \nbut finishes here"
-#136 ERROR "String constant too long"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#133 ERROR "Unterminated string constant"
+#133 OBJECTID error
+#134 ERROR "Unterminated string constant"
+#135 STR_CONST "no error \nno error"
+#136 STR_CONST "no error \n no error"
+#137 STR_CONST "a \b b \f f f\f b\b"
+#140 STR_CONST "This quote \nhas a null 0 \nbut finishes here"
+#154 ERROR "String constant too long"
+#177 ERROR "String constant too long"
+#189 STR_CONST "\n"
+#192 STR_CONST " \n"
+#200 STR_CONST "0x00"
