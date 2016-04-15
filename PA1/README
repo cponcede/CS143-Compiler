@@ -17,7 +17,7 @@ our comment_depth counter. Now, every time in the comment start condition we see
 a (* we increment our comment_depth, and every time we see a *) we decrement. If
 we see a *) and our comment_depth drops to zero, we know we are at the end of a
 comment, and we can leave our comment start condition. All other characters in
-the comment are ignored with a . conditon. With this approach, it is easy to
+the comment are ignored with a . rule. With this approach, it is easy to
 identify an extra *) (if we see it while in normal condition, it doesn't have a
 corresponding (* ), as well as an unmatched (* (if we see EOF while in a
 comment, we know that we never matched a parenthesis).
@@ -26,16 +26,31 @@ Now that we have taken care of comments, we must deal with strings. Here the
 special cases are more varied. We have two start conditions: string and
 invalid_string. When we see a quotation mark in normal mode, we switch to the
 string mode, and when we see another quotation in string mode, we switch back.
-In this mode, we look for any sequence with a \ in it. These strings we make
-sure to escape in code, so that we do not leave unescaped strings. We also look
+While in string mode, we replace all escaped characters with the actual
+character that the input string was attempting to represent. We also look
 for invalid characters in a string (\0, EOF, etc) with regex, handle them
-accordingly, and switch into invalid_string mode. This mode just ignores all
+accordingly, and switch into invalid_string mode if any invalid character
+is found or if the string becomes too long. This mode just ignores all
 characters until we see another quotation so we don't have to deal with all the
 string special cases in a string that is already error filled.
 
+Testing:
+
+The primary testing for the lexer is performed by attempting to tokenize
+random_tests.cl. This file is not a valid COOL program but thoroughly
+tests each of the different types of tokens that the lexical analyzer is
+expected to recognize. In addition, the file tests nested comments,
+invalid comments, and strings that are invalid for a variety of reasons.
+On top of the testing done within random_tests.cl, more specific tests
+regarding special cases within strings, such as escaped newlines, are
+performed by tokenizing string_tests.cl.
+
+In order to efficiently catch potential bugs in our lexer, we talked about
+test cases with Jack Payette while creating random_tests.cl 
 
 Completeness:
 
-We know that our lexer is complete since our error condition is just ".". This
-means that we will
+We know that our lexer is complete since, for every possible start condition,
+regular expression that will  match all tokens not handled by
+the more specific rules. Thus, it is impossible for a token to be unmatched.
 

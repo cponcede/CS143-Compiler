@@ -1,9 +1,12 @@
-(* This file will test some of the (* More tricky parts of Cool
-*) syntax *)
--- This is another way we can do a comment
+Note: some of the test cases that this file attempts to cover
+were discovered through collaboration with Jack Payette.
 
-(* We want to test *)the case and recognition of keywords *)
--- Above should be an unmatched error
+(* This file tests some of the (* many areas of COOL
+*) syntax such as (* *) nested comments! *)
+
+(* Keywords should not be*) recognized as keywords because of case *)
+-- This should not be an unmatched error. *)
+This is an unmatched error. *)
 
 CLASS
 class
