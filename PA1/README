@@ -1,4 +1,5 @@
-user: <jakerach> user: <cponcede>
+user: <jakerach> 
+user: <cponcede>
 
 WRITEUP FOR ASSIGNMENT 1:
 
@@ -36,17 +37,23 @@ string special cases in a string that is already error filled.
 
 Testing:
 
-The primary testing for the lexer is performed by attempting to tokenize
-random_tests.cl. This file is not a valid COOL program but thoroughly
-tests each of the different types of tokens that the lexical analyzer is
-expected to recognize. In addition, the file tests nested comments,
-invalid comments, and strings that are invalid for a variety of reasons.
-On top of the testing done within random_tests.cl, more specific tests
-regarding special cases within strings, such as escaped newlines, are
-performed by tokenizing string_tests.cl.
+We test our lexer with three files we created on top of the provided tests:
+comments_test.cl, keyword_test.cl, and string_tests.cl.
 
-In order to efficiently catch potential bugs in our lexer, we talked about
-test cases with Jack Payette while creating random_tests.cl 
+comments_test.cl is a file that contains multiple different comments. We test
+all of our comment start condition regex cases. This includes mismatched comment
+opening and closing, escaped new lines, EOF bugs, and lots of nested commenting.
+
+string_tests.cl is a file that contains multiple different strings. We test both
+start conditions that have to do with strings. We do this by purposefully
+creating both valid and invalid strings. The special cases include escaped
+characters, escaped new lines, and strings that are too long.
+
+keyword_test.cl tests the rest of our keywords and identifiers. We don't
+actually need to write cool code to test our lexer, since we just want to make
+sure that keywords are properly picked up by our regex. In this file, we test
+case insensitivity and valid recognition of all one/two character operators.
+
 
 Completeness:
 
