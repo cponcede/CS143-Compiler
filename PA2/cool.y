@@ -147,6 +147,16 @@
     
     /* Precedence declarations go here. */
     
+     /* Associativity */
+    %right ASSIGN
+    %left NOT
+    %nonassoc LE '<' '='
+    %left '+' '-'
+    %left '*' '/'
+    %left ISVOID
+    %left '~'
+    %left '@'
+    %left '.'
     
     %%
     /* 
@@ -180,7 +190,7 @@
 
     /* Features for the FEATURE_LIST. */
     feature
-    : OBJECTID '(' formal_list ')' : TYPEID '{' expression '}'
+    : OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}'
     | OBJECTID '(' ')' ':' TYPEID '{' expression '}'
     | argumentless_feature
     ;
@@ -231,7 +241,7 @@
     | OBJECTID '(' ')'
     | IF expression THEN expression ELSE expression FI
     | WHILE expression LOOP expression POOL
-    | { block }
+    | '{' block '}'
     | LET OBJECTID ':' TYPEID ASSIGN expression argumentless_feature_list IN expression
     | CASE expression OF darrow_expression_list ESAC
     | NEW TYPEID
@@ -246,10 +256,15 @@
     | expression '=' expression
     | NOT expression
     | '(' expression ')'
+    
     | OBJECTID
+    { $$ = object($1); }
     | INT_CONST
+    { $$ = int_const($1); }
     | STR_CONST
+    { $$ = string_const($1); }
     | BOOL_CONST
+    { $$ = bool_const($1); }
     ;
 
     
