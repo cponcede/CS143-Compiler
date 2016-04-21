@@ -165,17 +165,93 @@
     ;
     
     /* If no parent is specified, the class inherits from the Object class. */
-    class	: CLASS TYPEID '{' dummy_feature_list '}' ';'
+    class	: CLASS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,idtable.add_string("Object"),$4,
     stringtable.add_string(curr_filename)); }
-    | CLASS TYPEID INHERITS TYPEID '{' dummy_feature_list '}' ';'
+    | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
     ;
     
-    /* Feature list may be empty, but no empty features in list. */
-    dummy_feature_list:		/* empty */
-    {  $$ = nil_Features(); }
-    
+    /* Feature list should actually work. */
+    feature_list
+    : feature
+    | feature_list feature /* several features */
+    ;
+
+    /* Features for the FEATURE_LIST. */
+    feature
+    : OBJECTID '(' formal_list ')' : TYPEID '{' expression '}'
+    | OBJECTID '(' ')' ':' TYPEID '{' expression '}'
+    | argumentless_feature
+    ;
+
+    argumentless_feature_list
+    : argumentless_feature
+    | argumenless_feature_list ',' argumentless_feature
+    ;
+
+    argumentless_feature
+    : OBJECTID ':' TYPEID ASSIGN expression
+    | formal
+    ;
+
+    formal_list
+    : formal
+    | formal_list formal
+    ;
+
+    formal
+    : OBJECTID ':' TYPEID
+    ;
+
+    expression_list
+    : expression
+    | expression_list ',' expression
+    ;
+
+    block
+    : expression ';'
+    | block expression ';'
+    ;
+
+    darrow_expression_list
+    : darrow_expression
+    | darrow_expression_list darrow_expression
+    ;
+
+    darrow_expression
+    : OBJECTID ':' TYPEID DARROW expression ';'
+    ;
+
+    expression
+    : OBJECTID ASSIGN expression
+    | expression [@TYPEID] '.' OBJECTID '(' expression_list ')'
+    | expression [@TYPEID] '.' OBJECTID '(' ')'
+    | OBJECTID '(' expression_list ')'
+    | OBJECTID '(' ')'
+    | IF expression THEN expression ELSE expression FI
+    | WHILE expression LOOP expression POOL
+    | { block }
+    | LET OBJECTID ':' TYPEID ASSIGN expression argumentless_feature_list IN expression
+    | CASE expression OF darrow_expression_list ESAC
+    | NEW TYPEID
+    | ISVOID expression
+    | expression '+' expression
+    | expression '-' expression
+    | expression '*' expression
+    | expression '/' expression
+    | '~' expression
+    | expression '<' expression
+    | expression LE expression
+    | expression '=' expression
+    | NOT expression
+    | '(' expression ')'
+    | OBJECTID
+    | INT_CONST
+    | STR_CONST
+    | BOOL_CONST
+    ;
+
     
     /* end of grammar */
     %%
