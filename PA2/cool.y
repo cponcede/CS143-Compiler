@@ -133,17 +133,15 @@
     %type <program> program
     %type <classes> class_list
     %type <class_> class
-    %type <feature> feature
+    %type <feature> feature argumentless_feature
     %type <features> feature_list
     %type <formal> formal
     %type <formals> formal_list
     %type <expression> expression
-    %type <expressions> expression_list
-    %type <boolean> boolean
+    %type <expressions> expression_list block
     %type <error> error_msg
-    %type <case_> case
-    %type <cases> case_list
-    %type <symbol> symbol
+    %type <case_> darrow_expression
+    %type <cases> darrow_expression_list
     
     /* Precedence declarations go here. */
     
@@ -184,53 +182,71 @@
     
     /* Feature list should actually work. */
     feature_list
-    : feature
-    | feature_list feature /* several features */
+    : feature ';'
+    { $$ = single_Features ($1); }
+    | feature_list feature ';'/* several features */
+    { $$ = append_Features ($1, single_Features ($2)); }
     ;
 
     /* Features for the FEATURE_LIST. */
     feature
     : OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}'
+    { $$ = method ($1, $3, $6, $8); }
     | OBJECTID '(' ')' ':' TYPEID '{' expression '}'
+    { $$ = method ($1, nil_Formals (), $5, $7); }
     | argumentless_feature
+    { $$ = $1; };
     ;
 
+    /* Why did we write this?
     argumentless_feature_list
     : argumentless_feature
     | argumenless_feature_list ',' argumentless_feature
     ;
-
+    */
     argumentless_feature
     : OBJECTID ':' TYPEID ASSIGN expression
-    | formal
+    { $$ = attr ($1, $3, $5); }
+    | OBJECTID ':' TYPEID
+    { $$ = attr ($1, $3, no_expr()); }
     ;
 
     formal_list
     : formal
+    { $$ = single_Formals ($1); }
     | formal_list formal
+    { $$ = append_Formals ($1, single_Formals ($2)): }
     ;
 
     formal
     : OBJECTID ':' TYPEID
+    { $$ = formal ($1, $3); }
     ;
 
     expression_list
     : expression
+    { $$ = single_Expressions ($1); }
     | expression_list ',' expression
+    { $$ = append_Expressions ($1, single_Expressions($3)); }
     ;
 
     block
     : expression ';'
+    { $$ = single_Expressions ($1); }
     | block expression ';'
+    { $$ = append_Expressions ($1, single_Expressions ($2)); }
     ;
 
     darrow_expression_list
     : darrow_expression
+    { $$ = single_Cases ($1); }
     | darrow_expression_list darrow_expression
+    { $$ = append_Cases ($1, single_Cases($2)); }
     ;
 
     darrow_expression
     : OBJECTID ':' TYPEID DARROW expression ';'
+    { $$ = branch ($1, $3, $5); }
     ;
 
     expression
@@ -242,7 +258,7 @@
     | expression '.' OBJECTID '(' expression_list ')'
     { $$ = dispatch($1, $3, $5); }
     | OBJECTID '(' expression_list ')'
-    { $$ = dispatch (object (idtable.add_string ("self")), $1, $3);
+    { $$ = dispatch (object (idtable.add_string ("self")), $1, $3); }
     | OBJECTID '(' ')'
 	{ $$ = dispatch (object (idtable.add_string ("self")), $1,
 			 nil_Expressions()); }
@@ -256,9 +272,12 @@
     | WHILE expression LOOP expression POOL
     { $$ = loop ($2, $4); }
     | '{' block '}'
-    { $$ = block ($1); }
+    { $$ = block ($2); }
     | LET OBJECTID ':' TYPEID ASSIGN expression argumentless_feature_list IN expression
+    /* TODO: FIgure out what let statements are and how they should be
+	   parsed. */
     | CASE expression OF darrow_expression_list ESAC
+    { $$ = typcase ($2, $4); }
     | NEW TYPEID
     { $$ = new_($2); }
     | ISVOID expression
