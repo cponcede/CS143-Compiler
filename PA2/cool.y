@@ -202,16 +202,16 @@
     | OBJECTID '(' ')' ':' TYPEID '{' expression '}'
     { $$ = method ($1, nil_Formals (), $5, $7); }
     | OBJECTID ':' TYPEID ASSIGN expression
-    { $$ = method ($1, nil_Formals (), $3, $5); };
+    { $$ = attr ($1, $3, $5); };
     | OBJECTID ':' TYPEID
-    { $$ = method ($1, nil_Formals (), $3, no_expr ()); }
+    { $$ = attr ($1, $3, no_expr ()); }
     ;
 
     formal_list
     : formal
     { $$ = single_Formals ($1); }
-    | formal_list formal
-    { $$ = append_Formals ($1, single_Formals ($2)); }
+    | formal_list ',' formal
+    { $$ = append_Formals ($1, single_Formals ($3)); }
     ;
 
     formal
@@ -249,7 +249,9 @@
     : OBJECTID ':' TYPEID ASSIGN expression IN expression
     { $$ = let ($1, $3, $5, $7); }
     | OBJECTID ':' TYPEID IN expression
-    { $$ = let ($1, $3, no_expr(), $5); }
+    { 
+      $$ = let ($1, $3, no_expr (), $5); 
+    }
     | OBJECTID ':' TYPEID ASSIGN expression ',' let_statement
     { $$ = let ($1, $3, $5, $7); }
     | OBJECTID ':' TYPEID ',' let_statement
