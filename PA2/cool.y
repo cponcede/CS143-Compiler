@@ -188,6 +188,9 @@
     | CLASS TYPEID '{' '}' ';'
     { $$ = class_ ($2, idtable.add_string ("Object"), nil_Features (),
 		   stringtable.add_string (curr_filename)); }
+    | CLASS TYPEID '{' error '}' ';'
+    | CLASS TYPEID error ';'
+    | CLASS error ';'
     | error ';'
     ;
     
@@ -197,6 +200,9 @@
     { $$ = single_Features ($1); }
     | feature_list feature ';'/* several features */
     { $$ = append_Features ($1, single_Features ($2)); }
+    | /* no feature */
+    { $$ = nil_Features (); }
+
     ;
 
     /* Features for the FEATURE_LIST. */
@@ -258,13 +264,13 @@
     : OBJECTID ':' TYPEID ASSIGN expression IN expression
     { $$ = let ($1, $3, $5, $7); }
     | OBJECTID ':' TYPEID IN expression
-    { 
-      $$ = let ($1, $3, no_expr (), $5); 
-    }
+    { $$ = let ($1, $3, no_expr (), $5); }
     | OBJECTID ':' TYPEID ASSIGN expression ',' let_statement
     { $$ = let ($1, $3, $5, $7); }
     | OBJECTID ':' TYPEID ',' let_statement
     { $$ = let ($1, $3, no_expr(), $5); }
+    | OBJECTID ':' TYPEID ASSIGN error ',' let_statement
+    | OBJECTID error ',' let_statement
     | error ',' let_statement
     ;
 

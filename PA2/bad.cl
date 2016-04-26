@@ -23,10 +23,6 @@ Class C inherits a {
 Class D inherts A {
 };
 
-(* error:  closing brace is missing *)
-Class E inherits A {
-;
-
 (* Bad Let Tests *)
 class F {
 ana(): Int {
@@ -46,7 +42,7 @@ ana(): Int {
 };
 };
 
-(* Should skip just bad expression in block)
+(* Should skip just bad expression in block *)
 class I {
 ana(): Int {
 	var_a <- 0;
@@ -55,5 +51,6 @@ ana(): Int {
 };
 };
 
-
-
+(* error:  closing brace is missing *)
+Class E inherits A {
+;

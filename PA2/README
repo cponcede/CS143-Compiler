@@ -136,3 +136,37 @@ Instructions
 
 Write-up for PA2
 ----------------
+
+Error Handling:
+
+Error handling is performed using the special error token provided
+by Bison. The errors that we allow our parser to continue after are
+the set of errors described in the PA2 handout Error Handling section.
+These are:
+
+1. An error in a class definition -- our parser will skip the incorrect
+   class definition and continue until the next ';' token. This will
+   take the parser to the next class definition, where it will continue
+   parsing. Examples of this syntax error can be seen in bad.cl.
+
+2. An error in a feature -- our parser will follow the
+   feature -> error ';' production to move past a syntax error in
+   one feature to continue parsing at the next feature. There is
+   an example of this within bad.cl as well.
+
+3. A syntax error in a let binding -- our parser will report a
+   syntax error in an incorrect let_statement and then move on
+   to the next recursive let_statement due to the
+   let_statement -> error ',' let_statement and
+   let_statement -> OBJECTID ':' TYPEID ASSIGN error ',' let_statement
+   productions. These will skip the incorrect variable assignment
+   and move on to the next assignment in the let binding. There are
+   a few examples of these syntax errors in bad.cl.
+
+4. A syntax error in an expression within a { ... } block -- our
+   parser catches this error and continues afterwards due to the
+   block -> error ';' and block -> block error ';' productions
+   for the block non-terminal. These rules allow an incorrect
+   expression within a block to be skipped until the next ';'
+   token is encountered. There is an example of a junk expression
+   within a block in bad.cl.
