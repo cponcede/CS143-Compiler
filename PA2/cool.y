@@ -238,6 +238,8 @@
     { $$ = single_Expressions ($1); }
     | block expression ';'
     { $$ = append_Expressions ($1, single_Expressions ($2)); }
+    | error ';'
+    | block error ';'
     ;
 
     darrow_expression_list
