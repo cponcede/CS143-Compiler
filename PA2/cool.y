@@ -185,6 +185,10 @@
     { $$ = class_ ($2, $4, $6, stringtable.add_string (curr_filename)); }
     | CLASS TYPEID INHERITS TYPEID '{' '}' ';'
     { $$ = class_ ($2, $4, nil_Features (), stringtable.add_string(curr_filename)); }
+    | CLASS TYPEID '{' '}' ';'
+    { $$ = class_ ($2, idtable.add_string ("Object"), nil_Features (),
+		   stringtable.add_string (curr_filename)); }
+    | error ';'
     ;
     
     /* Feature list should actually work. */
@@ -205,6 +209,9 @@
     { $$ = attr ($1, $3, $5); };
     | OBJECTID ':' TYPEID
     { $$ = attr ($1, $3, no_expr ()); }
+    | OBJECTID '(' formal_list ')' ':' TYPEID '{' error '}'
+    | OBJECTID '(' ')' ':' TYPEID '{' error '}'
+    | error ';'
     ;
 
     formal_list
