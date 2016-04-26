@@ -263,6 +263,7 @@
     { $$ = let ($1, $3, $5, $7); }
     | OBJECTID ':' TYPEID ',' let_statement
     { $$ = let ($1, $3, no_expr(), $5); }
+    | error ',' let_statement
     ;
 
     let_statement_wrap
