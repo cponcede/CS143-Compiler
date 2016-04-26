@@ -27,3 +27,33 @@ Class D inherts A {
 Class E inherits A {
 ;
 
+(* Bad Let Tests *)
+class F {
+ana(): Int {
+	(let x:Int <- 1, y:Int <-, z:Int in 2)+3
+};
+};
+
+class G {
+ana(): Int {
+	(let x:Int <- 1, y:In, z:Int in 2)+3
+};
+};
+
+class H {
+ana(): Int {
+	(let x:Int <- 1, y:Int <-3, z:Int in 2)+3
+};
+};
+
+(* Should skip just bad expression in block)
+class I {
+ana(): Int {
+	var_a <- 0;
+	kjhgukyauisdhah;
+	var_b <- 1;
+};
+};
+
+
+
