@@ -3,6 +3,9 @@
 
 #include <assert.h>
 #include <iostream>  
+#include <string>
+#include <unordered_map>
+#include <vector>
 #include "cool-tree.h"
 #include "stringtab.h"
 #include "symtab.h"
@@ -19,10 +22,33 @@ typedef ClassTable *ClassTableP;
 // you like: it is only here to provide a container for the supplied
 // methods.
 
+
+class GraphNode{
+private:
+	bool inherits;
+	std::string class_name;
+	std::string class_inherited_from;
+public:
+	GraphNode(std::string class_name, std::string class_inherited_from);
+	std::string get_class_name();
+	std::string get_class_inherited_from();
+};
+
+class ClassGraph {
+public:
+	ClassGraph();
+	void add_class(GraphNode&);
+	bool has_cycles();
+	bool all_defined();
+private:
+	std::unordered_map <std::string, std::string> node_map;
+};
+
 class ClassTable {
 private:
   int semant_errors;
   void install_basic_classes();
+  bool has_cycles();
   ostream& error_stream;
 
 public:
@@ -32,6 +58,8 @@ public:
   ostream& semant_error(Class_ c);
   ostream& semant_error(Symbol filename, tree_node *t);
 };
+
+
 
 
 #endif
