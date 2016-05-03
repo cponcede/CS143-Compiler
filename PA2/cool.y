@@ -200,9 +200,6 @@
     { $$ = single_Features ($1); }
     | feature_list feature ';'/* several features */
     { $$ = append_Features ($1, single_Features ($2)); }
-    | /* no feature */
-    { $$ = nil_Features (); }
-
     ;
 
     /* Features for the FEATURE_LIST. */

@@ -133,6 +133,8 @@ Instructions
 	GOOD LUCK!
 
 ---8<------8<------8<------8<---cut here---8<------8<------8<------8<---
+user: cponcede
+user: jakerach
 
 Write-up for PA2
 ----------------
@@ -176,12 +178,13 @@ As described above, we used bad.cl to test all error handling cases. We needed a
 way to also test well formed input. To do so, we found every example program
 from the /usr/class/cs143/examples folder and ran it through our parser. We
 tested these in two different ways - we compiled the programs with ./mycoolc and
-we compared to the example parser's output. We were sure not to take the example
-parser at its word, because we did handle some line number cases much
-differently (i.e. no expression and multiline statements). We then made sure
-that our output for the smaller programs in examples made sense when walking
-through the parsed output. These programs are large enough in totallity that
-they should cover all of our well formed input.
+we compared the out from ./myparser to the example parser's output. We
+were sure not to take the example parser at its word, because we did
+handle some line number cases much differently (i.e. no expression and
+multiline statements). We then made sure that our output for the smaller
+programs in examples made sense when walking through the parsed output.
+These programs are large enough in totallity that they should cover all of
+our well formed input.
 
 Most of the program was pretty straightforward, one tough design decision was
 how to nest let statements. We chose a right-recursive strategy, where for each

@@ -44,11 +44,11 @@ ana(): Int {
 
 (* Should skip just bad expression in block *)
 class I {
-ana(): Int {
+ana(): Int {{
 	var_a <- 0;
-	kjhgukyauisdhah;
+	kjhgukyauisdhah hfuskduh iusaoi;
 	var_b <- 1;
-};
+}};
 };
 
 (* error:  closing brace is missing *)
