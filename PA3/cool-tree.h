@@ -159,6 +159,7 @@ public:
       features = a3;
       filename = a4;
    }
+
    Class_ copy_Class_();
    void dump(ostream& stream, int n);
 
