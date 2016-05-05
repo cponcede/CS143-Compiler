@@ -1,5 +1,5 @@
 
-
+#include <set>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -81,25 +81,32 @@ static void initialize_constants(void)
     val         = idtable.add_string("_val");
 }
 
-void ClassTable::add_class(Symbol class_name, Symbol inherits_from) {
+
+/*
+ * Adds a class to the current ClassTable with the name class_name and
+ * the ancestor inherits_from. Returns whether or not it was successful.
+ */
+void ClassTable::add_class(Class_ current_class) {
+    Symbol class_name = current_class->get_name();
+    Symbol inherits_from = current_class->get_parent();
+
     /* Ensure no class is defined more than once. */
     if (this->inheritance_map[class_name]) {
-        ostream e_stream = this->semant_error();
-        e_stream << "Class with name: " << class_name << " is defined multiple times." << endl;
+        semant_error(current_class) << "Class with name " << class_name << " is defined multiple times." << endl;
         return;
     }
     /* Ensure no class attempts to inherit from basic classes other than Object. */
-    if (inherits_from == IO || inherits_from == Int || inherits_from == Str) {
-        ostream e_stream = this->semant_error();
-        e_stream << "Class with name: " << class_name << " attempts to inherit from " 
+    if (inherits_from == Bool || inherits_from == Int || inherits_from == Str) {
+        semant_error(current_class) << "Class with name: " << class_name << " attempts to inherit from " 
             << "basic class with name: " << inherits_from << endl;
         return;
     }
     this->inheritance_map[class_name] = inherits_from;
+    return;
 }
 
 Symbol ClassTable::inherits_from(Symbol class_name) {
-    return this->inheritance_map[class_name];
+    return inheritance_map[class_name];
 }
 
 /*
@@ -108,22 +115,57 @@ Symbol ClassTable::inherits_from(Symbol class_name) {
  * for the given Symbol.
  */
 bool ClassTable::is_present_once(Symbol class_name) {
-    /* TODO: implement. */
-    return this->inheritance_map[class_name] != NULL;
+    return inheritance_map.find(class_name) != inheritance_map.end();
 }
 
-bool ClassTable::has_cycles() {
-    /* TODO: implement. */
-    return false;
-}
-
-bool ClassTable::all_defined() {
-    for (std::map<Symbol, Symbol>::iterator it = this->inheritance_map.begin();
-        it != this->inheritance_map.end(); ++it) {
-        if (!is_present_once(it->second)) return false;
+bool ClassTable::check_symbol_for_cycles(Symbol class_name) {
+    Symbol current_name = class_name;
+    std::set <Symbol> seen_set;
+    while (current_name != No_class) {
+        if (seen_set.find(current_name) != seen_set.end()) {
+            semant_error() << "Class with name: " << class_name << " (or an ancestor of it)"
+                << " is in an inheritance cycle." << endl;
+            return false;
+        }
+        seen_set.insert(current_name);
+        current_name = inheritance_map[current_name];
     }
 
     return true;
+}
+
+/*
+ * This method will operate under the assumption that all methods are defined.
+ * We will check for cycles on only otherwise wellformed class tables.
+ */
+bool ClassTable::has_cycles() {
+    bool cycles_present = true;
+    for (std::map<Symbol, Symbol>::iterator it = this->inheritance_map.begin();
+        it != this->inheritance_map.end(); ++it) {
+        if (!check_symbol_for_cycles(it->first)) cycles_present = false;
+    }
+    return cycles_present;
+}
+
+/*
+ * This method looks at a class table and makes sure that all classes mentioned
+ * do, in fact, exist. Returns whether or not all classes do exist.
+ */
+bool ClassTable::all_defined() {
+    bool all_defined = true;
+    for (std::map<Symbol, Symbol>::iterator it = this->inheritance_map.begin();
+        it != this->inheritance_map.end(); ++it) {
+
+        /* Continue if Object, since no inheritance happens. */
+        if (it->first == Object && it->second == No_class) continue;
+
+        if (!is_present_once(it->second)) {
+            all_defined = false;
+            semant_error() << "Class " << it->first << " inherits from an undefined class " << it->second << endl;
+        }
+    }
+
+    return all_defined;
 }
 
 
@@ -131,11 +173,9 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
 
     for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
         Class_ current_class = classes->nth(i);
-        Symbol parent = current_class->get_parent();
-        cout << "name is: " << current_class->get_name();
-        if (parent) cout << " and parent is: " << parent;
-        cout << endl;
+        add_class(current_class);
     }
+    install_basic_classes();
 }
 
 void ClassTable::install_basic_classes() {
@@ -172,6 +212,8 @@ void ClassTable::install_basic_classes() {
 			       single_Features(method(copy, nil_Formals(), SELF_TYPE, no_expr()))),
 	       filename);
 
+    add_class(Object_class);
+
     // 
     // The IO class inherits from Object. Its methods are
     //        out_string(Str) : SELF_TYPE       writes a string to the output
@@ -193,6 +235,8 @@ void ClassTable::install_basic_classes() {
 			       single_Features(method(in_int, nil_Formals(), Int, no_expr()))),
 	       filename);  
 
+    add_class(IO_class);
+
     //
     // The Int class has no methods and only a single attribute, the
     // "val" for the integer. 
@@ -203,11 +247,14 @@ void ClassTable::install_basic_classes() {
 	       single_Features(attr(val, prim_slot, no_expr())),
 	       filename);
 
+    add_class(Int_class);
+
     //
     // Bool also has only the "val" slot.
     //
     Class_ Bool_class =
 	class_(Bool, Object, single_Features(attr(val, prim_slot, no_expr())),filename);
+    add_class(Bool_class);
 
     //
     // The class Str has a number of slots and operations:
@@ -237,6 +284,8 @@ void ClassTable::install_basic_classes() {
 						      Str, 
 						      no_expr()))),
 	       filename);
+
+    add_class(Str_class);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -272,6 +321,12 @@ ostream& ClassTable::semant_error()
 } 
 
 
+void exit_gracefully_if_errors(ClassTable *classtable) {
+    if (classtable->errors()) {
+        cerr << "Compilation halted due to static semantic errors." << endl;
+        exit(1);
+    }
+}
 
 /*   This is the entry point to the semantic checker.
 
@@ -292,12 +347,16 @@ void program_class::semant()
 
     /* ClassTable constructor may do some semantic analysis */
     ClassTable *classtable = new ClassTable(classes);
+    exit_gracefully_if_errors(classtable);
+
+    if (!classtable->all_defined()) exit_gracefully_if_errors(classtable);
+    if (classtable->has_cycles()) exit_gracefully_if_errors(classtable);
 
     /* some semantic analysis code may go here */
 
     if (classtable->errors()) {
-	cerr << "Compilation halted due to static semantic errors." << endl;
-	exit(1);
+    	cerr << "Compilation halted due to static semantic errors." << endl;
+    	exit(1);
     }
 }
 

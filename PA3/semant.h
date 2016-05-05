@@ -26,9 +26,10 @@ class ClassTable {
 private:
   int semant_errors;
   void install_basic_classes();
-  void add_class(Symbol class_name, Symbol inherits_from);
+  void add_class(Class_);
 	Symbol inherits_from(Symbol);
 	bool is_present_once(Symbol);
+  bool check_symbol_for_cycles(Symbol);
   ostream& error_stream;
 
 public:
