@@ -22,31 +22,25 @@ typedef ClassTable *ClassTableP;
 // you like: it is only here to provide a container for the supplied
 // methods.
 
-class ClassGraph {
-public:
-	ClassGraph();
-	void add_class(std::string class_name, std::string inherits_from);
-	bool has_cycles();
-	bool all_defined();
-	std::string inherits_from(std::string);
-	bool is_present_once(std::string);
-private:
-	std::map <std::string, std::string> node_map;
-};
-
 class ClassTable {
 private:
   int semant_errors;
   void install_basic_classes();
-  bool has_cycles();
+  void add_class(Symbol class_name, Symbol inherits_from);
+	Symbol inherits_from(Symbol);
+	bool is_present_once(Symbol);
   ostream& error_stream;
 
 public:
   ClassTable(Classes);
   int errors() { return semant_errors; }
+  bool has_cycles();
+  bool all_defined();
+
   ostream& semant_error();
   ostream& semant_error(Class_ c);
   ostream& semant_error(Symbol filename, tree_node *t);
+  std::map <Symbol, Symbol> inheritance_map;
 };
 
 

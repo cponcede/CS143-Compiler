@@ -81,12 +81,60 @@ static void initialize_constants(void)
     val         = idtable.add_string("_val");
 }
 
+void ClassTable::add_class(Symbol class_name, Symbol inherits_from) {
+    /* Ensure no class is defined more than once. */
+    if (this->inheritance_map[class_name]) {
+        ostream e_stream = this->semant_error();
+        e_stream << "Class with name: " << class_name << " is defined multiple times." << endl;
+        return;
+    }
+    /* Ensure no class attempts to inherit from basic classes other than Object. */
+    if (inherits_from == IO || inherits_from == Int || inherits_from == Str) {
+        ostream e_stream = this->semant_error();
+        e_stream << "Class with name: " << class_name << " attempts to inherit from " 
+            << "basic class with name: " << inherits_from << endl;
+        return;
+    }
+    this->inheritance_map[class_name] = inherits_from;
+}
+
+Symbol ClassTable::inherits_from(Symbol class_name) {
+    return this->inheritance_map[class_name];
+}
+
+/*
+ * Something cannot possibly have two associated values, and we already check for
+ * double entry, so this just returns true if there is a key in our inheritance_map
+ * for the given Symbol.
+ */
+bool ClassTable::is_present_once(Symbol class_name) {
+    /* TODO: implement. */
+    return this->inheritance_map[class_name] != NULL;
+}
+
+bool ClassTable::has_cycles() {
+    /* TODO: implement. */
+    return false;
+}
+
+bool ClassTable::all_defined() {
+    for (std::map<Symbol, Symbol>::iterator it = this->inheritance_map.begin();
+        it != this->inheritance_map.end(); ++it) {
+        if (!is_present_once(it->second)) return false;
+    }
+
+    return true;
+}
 
 
 ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) {
+
     for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
         Class_ current_class = classes->nth(i);
-        cout << current_class->get_name() << endl;
+        Symbol parent = current_class->get_parent();
+        cout << "name is: " << current_class->get_name();
+        if (parent) cout << " and parent is: " << parent;
+        cout << endl;
     }
 }
 
