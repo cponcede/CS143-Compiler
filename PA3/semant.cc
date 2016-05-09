@@ -367,6 +367,28 @@ ostream& MethodTypeEnvironment::semant_error()
   return error_stream;
 }
 
+void MethodTypeEnvironment::dump_type_environment () {
+  cout << "We are beginning our dump of the type environment" << endl;
+
+  for (std::map<Symbol, ClassMethodInfo *>::iterator it = this->environment_map.begin();
+       it != this->environment_map.end(); ++it) {
+    cout << "Now looking at the class named: " << it->first << endl;
+
+    for (std::map<Symbol, MethodInfo *>::iterator mit = it->second->method_map.begin();
+       mit != it->second->method_map.end(); ++mit) {
+
+      cout << "Now looking at the method named: " << mit->first;
+      cout << " and return type: " << mit->second->get_return_type() << endl;
+      cout << " it has arguments of type: ";
+      for (int i = 0; i < mit->second->arguments.size(); i++) {
+        cout << mit->second->arguments[i] << ", ";
+      }
+      cout << endl;
+
+    }
+  }
+}
+
 ClassMethodInfo::ClassMethodInfo(Class_ cl) {
   Features class_features = cl->get_features();
   for (int j = class_features->first(); class_features->more(j); j = class_features->next(j)) {
@@ -374,6 +396,8 @@ ClassMethodInfo::ClassMethodInfo(Class_ cl) {
     if (!feat->is_method())
       continue;
     Symbol method_name = feat->get_name();
+
+    cout << "Creating method info in class: " << cl->get_name() << endl;
     MethodInfo *new_method_info = new MethodInfo(feat);
     this->method_map[method_name] = new_method_info;
   }
@@ -395,6 +419,7 @@ Symbol ClassMethodInfo::get_nth_argument_type (Symbol method_name, int n) {
 
 MethodInfo::MethodInfo (Feature meth) {
   this->return_type = meth->get_type ();
+  cout << "Creating a method named: " << meth->get_name() << " with type: " << this->return_type << endl;
   Formals argument_list = meth->get_formals ();
   for (int i = argument_list->first(); argument_list->more(i); i = argument_list->next(i)) {
     this->arguments.push_back (argument_list->nth(i)->get_type());
@@ -440,6 +465,9 @@ void program_class::semant()
   
   /* some semantic analysis code may go here */
   
+  MethodTypeEnvironment *mte = new MethodTypeEnvironment (classes);
+  mte->dump_type_environment();
+
   if (classtable->errors()) {
     cerr << "Compilation halted due to static semantic errors." << endl;
     exit(1);
