@@ -1,8 +1,8 @@
-
 #include <set>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "assert.h"
 #include "semant.h"
 #include "utilities.h"
 
@@ -327,18 +327,7 @@ void exit_gracefully_if_errors(ClassTable *classtable) {
     exit(1);
   }
 }
-
-/*
- class MethodInfo {
- private:
- Symbol return_type;
- std::vector<Symbol> arguments;
- public:
- MethodInfo (method_class);
- Symbol get_return_type ();
- Symbol get_nth_argument_type (int n);
- };
- 
+ /*
  class MethodTypeEnvironment {
  private:
  std::map <Symbol, std::map<Symbol, MethodInfo> > environment_map;
@@ -351,12 +340,78 @@ void exit_gracefully_if_errors(ClassTable *classtable) {
  };
  */
 
-MethodInfo::MethodInfo (method_class meth) {
-  this->return_type = meth.get_return_type ();
-  Formals argument_list = meth.get_formals ();
+MethodTypeEnvironment::MethodTypeEnvironment (Classes classes) : semant_errors(0) , error_stream(cerr) {
+  for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
+    Class_ cl = classes->nth(i);
+    ClassMethodInfo *new_class_info = new ClassMethodInfo(cl);
+    this->environment_map[cl->get_name()] = new_class_info;
+  }
+}
+
+/* The same error reporting functions provided for use in ClassTable,
+   but adapted to work for MethodTypeEnvironment instead. */
+ostream& MethodTypeEnvironment::semant_error(Class_ c)
+{
+  return semant_error(c->get_filename(),c);
+}
+
+ostream& MethodTypeEnvironment::semant_error(Symbol filename, tree_node *t)
+{
+  error_stream << filename << ":" << t->get_line_number() << ": ";
+  return semant_error();
+}
+
+ostream& MethodTypeEnvironment::semant_error()
+{
+  semant_errors++;
+  return error_stream;
+}
+
+ClassMethodInfo::ClassMethodInfo(Class_ cl) {
+  Features class_features = cl->get_features();
+  for (int j = class_features->first(); class_features->more(j); j = class_features->next(j)) {
+    Feature feat = class_features->nth(j);
+    if (!feat->is_method())
+      continue;
+    Symbol method_name = feat->get_name();
+    MethodInfo *new_method_info = new MethodInfo(feat);
+    this->method_map[method_name] = new_method_info;
+  }
+}
+
+Symbol ClassMethodInfo::get_method_return_type (Symbol method_name) {
+  if (this->method_map.find(method_name) == this->method_map.end())
+    return NULL;
+  MethodInfo *method_info = this->method_map[method_name];
+  return method_info->get_return_type();
+}
+
+Symbol ClassMethodInfo::get_nth_argument_type (Symbol method_name, int n) {
+  if (this->method_map.find(method_name) == this->method_map.end())
+    return NULL;
+  MethodInfo *method_info = this->method_map[method_name];
+  return method_info->get_nth_argument_type(n);
+}
+
+MethodInfo::MethodInfo (Feature meth) {
+  this->return_type = meth->get_type ();
+  Formals argument_list = meth->get_formals ();
   for (int i = argument_list->first(); argument_list->more(i); i = argument_list->next(i)) {
     this->arguments.push_back (argument_list->nth(i)->get_type());
   }
+}
+
+Symbol MethodInfo::get_return_type () { 
+  return this->return_type;
+}
+
+/* Returns the type of the nth formal of the given method. Returns
+   NULL If no such nth formal exists. */
+Symbol MethodInfo::get_nth_argument_type (int n) {
+  if (this->arguments.size() <= n) {
+    return NULL;
+  }
+  return this->arguments[n];
 }
 
 /*   This is the entry point to the semantic checker.

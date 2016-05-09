@@ -58,7 +58,8 @@ void dump_with_types(ostream&, int);
 virtual Symbol get_filename() = 0;      \
 virtual void dump_with_types(ostream&,int) = 0; 	\
 virtual Symbol get_name() = 0;						\
-virtual Symbol get_parent() = 0;
+virtual Symbol get_parent() = 0;					\
+virtual Features get_features() = 0;
                     
 
 
@@ -66,19 +67,33 @@ virtual Symbol get_parent() = 0;
 Symbol get_filename() { return filename; }             \
 void dump_with_types(ostream&,int);						\
 Symbol get_name() { return name; }						\
-Symbol get_parent() { return parent ? parent : NULL; }
+Symbol get_parent() { return parent ? parent : NULL; }	\
+Features get_features() { return features; }
 
 
 
 #define Feature_EXTRAS                                        \
-virtual void dump_with_types(ostream&,int) = 0; 
+virtual void dump_with_types(ostream&,int) = 0;				\
+virtual bool is_method() = 0;								\
+virtual Symbol get_name() = 0;								\
+virtual Symbol get_type() = 0;								\
+virtual Formals get_formals() = 0;							
 
 
-#define Feature_SHARED_EXTRAS                                       \
-void dump_with_types(ostream&,int);    
+#define Feature_SHARED_EXTRAS                                   \
+void dump_with_types(ostream&,int);								\
+Symbol get_name() { return name; }    								
 
 
+#define method_EXTRAS										\
+bool is_method() { return true; }							\
+Symbol get_type() { return return_type; }					\
+Formals get_formals() { return formals; }
 
+#define attr_EXTRAS											\
+bool is_method() { return false; }							\
+Symbol get_type() { return type_decl; }						\
+Formals get_formals() {return NULL; }
 
 
 #define Formal_EXTRAS                              \

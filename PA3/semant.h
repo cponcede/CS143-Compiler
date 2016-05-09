@@ -49,20 +49,33 @@ private:
   Symbol return_type;
   std::vector<Symbol> arguments;
 public:
-  MethodInfo (method_class);
+  MethodInfo (Feature meth);
   Symbol get_return_type ();
   Symbol get_nth_argument_type (int n);
 };
 
+class ClassMethodInfo {
+private:
+  std::map<Symbol, MethodInfo* > method_map;
+public:
+  ClassMethodInfo(Class_);
+  Symbol get_method_return_type (Symbol method_name);
+  Symbol get_nth_argument_type (Symbol method_name, int n);
+};
+
 class MethodTypeEnvironment {
 private:
-  std::map <Symbol, std::map<Symbol, MethodInfo> > environment_map;
-  void add_class (Symbol class_name);
-  void add_method (Symbol class_name, Symbol method_name);
+  ostream& error_stream;
+  int semant_errors;
+  std::map <Symbol, ClassMethodInfo* > environment_map;
 public:
   MethodTypeEnvironment (Classes);
   Symbol get_return_type (Symbol class_name, Symbol method_name);
   Symbol get_nth_argument_type (int n, Symbol class_name, Symbol method_name);
+  ostream& semant_error();
+  ostream& semant_error(Class_ c);
+  ostream& semant_error(Symbol filename, tree_node *t);
+  int errors() { return semant_errors; }
 };
 
 
