@@ -68,10 +68,11 @@ class MethodTypeEnvironment {
 private:
   ostream& error_stream;
   int semant_errors;
+  void install_basic_classes ();
   std::map <Symbol, ClassMethodInfo* > environment_map;
 public:
   MethodTypeEnvironment (Classes);
-  Symbol get_return_type (Symbol class_name, Symbol method_name);
+  Symbol get_return_type (Class_ cl, Symbol method_name);
   Symbol get_nth_argument_type (int n, Symbol class_name, Symbol method_name);
   void dump_type_environment (void);
   ostream& semant_error();

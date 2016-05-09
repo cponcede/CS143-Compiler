@@ -178,6 +178,65 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
   install_basic_classes();
 }
 
+Class_ create_object_class (Symbol filename) {
+  return class_(Object,
+                No_class,
+                append_Features(
+                         append_Features(
+                                         single_Features(method(cool_abort, nil_Formals(), Object, no_expr())),
+                                         single_Features(method(type_name, nil_Formals(), Str, no_expr()))),
+                         single_Features(method(copy, nil_Formals(), SELF_TYPE, no_expr()))),
+                filename);
+}
+
+Class_ create_io_class (Symbol filename) {
+  return class_(IO,
+                Object,
+                append_Features(
+                         append_Features(
+                                         append_Features(
+                                                         single_Features(method(out_string, single_Formals(formal(arg, Str)),
+                                                                                SELF_TYPE, no_expr())),
+                                                         single_Features(method(out_int, single_Formals(formal(arg, Int)),
+                                                                                SELF_TYPE, no_expr()))),
+                                         single_Features(method(in_string, nil_Formals(), Str, no_expr()))),
+                         single_Features(method(in_int, nil_Formals(), Int, no_expr()))),
+                filename);
+}
+
+Class_ create_int_class (Symbol filename) {
+  return class_(Int,
+                Object,
+                single_Features(attr(val, prim_slot, no_expr())),
+                filename);
+}
+
+Class_ create_bool_class (Symbol filename) {
+  return class_(Bool, Object, single_Features(attr(val, prim_slot, no_expr())),filename);
+}
+
+Class_ create_str_class (Symbol filename) {
+  return class_(Str,
+                Object,
+                append_Features(
+                         append_Features(
+                                         append_Features(
+                                                         append_Features(
+                                                                         single_Features(attr(val, Int, no_expr())),
+                                                                         single_Features(attr(str_field, prim_slot, no_expr()))),
+                                                         single_Features(method(length, nil_Formals(), Int, no_expr()))),
+                                         single_Features(method(concat,
+                                                                single_Formals(formal(arg, Str)),
+                                                                Str,
+                                                                no_expr()))),
+                         single_Features(method(substr,
+                                                append_Formals(single_Formals(formal(arg, Int)),
+                                                               single_Formals(formal(arg2, Int))),
+                                                Str,
+                                                no_expr()))),
+                filename);
+}
+
 void ClassTable::install_basic_classes() {
   
   // The tree package uses these globals to annotate the classes built below.
@@ -202,16 +261,7 @@ void ClassTable::install_basic_classes() {
   // There is no need for method bodies in the basic classes---these
   // are already built in to the runtime system.
   
-  Class_ Object_class =
-  class_(Object,
-         No_class,
-         append_Features(
-                         append_Features(
-                                         single_Features(method(cool_abort, nil_Formals(), Object, no_expr())),
-                                         single_Features(method(type_name, nil_Formals(), Str, no_expr()))),
-                         single_Features(method(copy, nil_Formals(), SELF_TYPE, no_expr()))),
-         filename);
-  
+  Class_ Object_class = create_object_class (filename);
   add_class(Object_class);
   
   //
@@ -221,39 +271,20 @@ void ClassTable::install_basic_classes() {
   //        in_string() : Str                 reads a string from the input
   //        in_int() : Int                      "   an int     "  "     "
   //
-  Class_ IO_class =
-  class_(IO,
-         Object,
-         append_Features(
-                         append_Features(
-                                         append_Features(
-                                                         single_Features(method(out_string, single_Formals(formal(arg, Str)),
-                                                                                SELF_TYPE, no_expr())),
-                                                         single_Features(method(out_int, single_Formals(formal(arg, Int)),
-                                                                                SELF_TYPE, no_expr()))),
-                                         single_Features(method(in_string, nil_Formals(), Str, no_expr()))),
-                         single_Features(method(in_int, nil_Formals(), Int, no_expr()))),
-         filename);
-  
+  Class_ IO_class = create_io_class (filename);
   add_class(IO_class);
   
   //
   // The Int class has no methods and only a single attribute, the
   // "val" for the integer.
   //
-  Class_ Int_class =
-  class_(Int,
-         Object,
-         single_Features(attr(val, prim_slot, no_expr())),
-         filename);
-  
+  Class_ Int_class = create_int_class (filename);
   add_class(Int_class);
   
   //
   // Bool also has only the "val" slot.
   //
-  Class_ Bool_class =
-  class_(Bool, Object, single_Features(attr(val, prim_slot, no_expr())),filename);
+  Class_ Bool_class = create_bool_class (filename);
   add_class(Bool_class);
   
   //
@@ -264,27 +295,7 @@ void ClassTable::install_basic_classes() {
   //       concat(arg: Str) : Str               performs string concatenation
   //       substr(arg: Int, arg2: Int): Str     substring selection
   //
-  Class_ Str_class =
-  class_(Str,
-         Object,
-         append_Features(
-                         append_Features(
-                                         append_Features(
-                                                         append_Features(
-                                                                         single_Features(attr(val, Int, no_expr())),
-                                                                         single_Features(attr(str_field, prim_slot, no_expr()))),
-                                                         single_Features(method(length, nil_Formals(), Int, no_expr()))),
-                                         single_Features(method(concat,
-                                                                single_Formals(formal(arg, Str)),
-                                                                Str,
-                                                                no_expr()))),
-                         single_Features(method(substr,
-                                                append_Formals(single_Formals(formal(arg, Int)),
-                                                               single_Formals(formal(arg2, Int))),
-                                                Str,
-                                                no_expr()))),
-         filename);
-  
+  Class_ Str_class = create_str_class (filename);
   add_class(Str_class);
 }
 
@@ -341,11 +352,39 @@ void exit_gracefully_if_errors(ClassTable *classtable) {
  */
 
 MethodTypeEnvironment::MethodTypeEnvironment (Classes classes) : semant_errors(0) , error_stream(cerr) {
+  install_basic_classes();
   for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
     Class_ cl = classes->nth(i);
     ClassMethodInfo *new_class_info = new ClassMethodInfo(cl);
     this->environment_map[cl->get_name()] = new_class_info;
   }
+}
+
+void MethodTypeEnvironment::install_basic_classes() {
+  Symbol filename = stringtable.lookup_string("<basic class>");
+
+  ClassMethodInfo *object_class_info = new ClassMethodInfo(create_object_class(filename));
+  this->environment_map[Object] = object_class_info;
+  ClassMethodInfo *int_class_info = new ClassMethodInfo(create_int_class(filename));
+  this->environment_map[Int] = int_class_info;
+  ClassMethodInfo *str_class_info = new ClassMethodInfo(create_str_class(filename));
+  this->environment_map[Str] = str_class_info;
+  ClassMethodInfo *bool_class_info = new ClassMethodInfo(create_bool_class(filename));
+  this->environment_map[Bool] = bool_class_info;
+  ClassMethodInfo *io_class_info = new ClassMethodInfo(create_io_class(filename));
+  this->environment_map[IO] = io_class_info;
+}
+
+Symbol MethodTypeEnvironment::get_return_type (Class_ cl, Symbol method_name) {
+  Symbol return_type = NULL;
+  while (cl->get_name() != No_class) {
+    Symbol class_name = cl->get_name();
+    ClassMethodInfo *cminfo = this->environment_map[class_name];
+    Symbol return_type = cminfo->get_method_return_type(method_name);
+    if (return_type) break;
+  }
+
+  return return_type;
 }
 
 /* The same error reporting functions provided for use in ClassTable,
