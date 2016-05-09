@@ -2,7 +2,7 @@
 #define SEMANT_H_
 
 #include <assert.h>
-#include <iostream>  
+#include <iostream>
 #include <string>
 #include <map>
 #include <vector>
@@ -27,23 +27,43 @@ private:
   int semant_errors;
   void install_basic_classes();
   void add_class(Class_);
-	Symbol inherits_from(Symbol);
-	bool is_present_once(Symbol);
+  Symbol inherits_from(Symbol);
+  bool is_present_once(Symbol);
   bool check_symbol_for_cycles(Symbol);
   ostream& error_stream;
-
+  
 public:
   ClassTable(Classes);
   int errors() { return semant_errors; }
   bool has_cycles();
   bool all_defined();
-
+  
   ostream& semant_error();
   ostream& semant_error(Class_ c);
   ostream& semant_error(Symbol filename, tree_node *t);
   std::map <Symbol, Symbol> inheritance_map;
 };
 
+class MethodInfo {
+private:
+  Symbol return_type;
+  std::vector<Symbol> arguments;
+public:
+  MethodInfo (method_class);
+  Symbol get_return_type ();
+  Symbol get_nth_argument_type (int n);
+};
+
+class MethodTypeEnvironment {
+private:
+  std::map <Symbol, std::map<Symbol, MethodInfo> > environment_map;
+  void add_class (Symbol class_name);
+  void add_method (Symbol class_name, Symbol method_name);
+public:
+  MethodTypeEnvironment (Classes);
+  Symbol get_return_type (Symbol class_name, Symbol method_name);
+  Symbol get_nth_argument_type (int n, Symbol class_name, Symbol method_name);
+};
 
 
 

@@ -186,6 +186,8 @@ public:
       return_type = a3;
       expr = a4;
    }
+   Symbol get_return_type () { return return_type; }
+   Formals get_formals () { return formals; }
    Feature copy_Feature();
    void dump(ostream& stream, int n);
 
