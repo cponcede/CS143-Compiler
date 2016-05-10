@@ -484,8 +484,7 @@ bool class__class::verify_type()
   cout << "Evaluating class " << name << endl;
   bool result = true;
   for(int i = features->first(); features->more(i); i = features->next(i))
-    if (!features->nth(i)->verify_type())
-      result = false;
+    if (!features->nth(i)->verify_type()) result = false;
   return result;
 }
 
@@ -495,6 +494,7 @@ bool method_class::verify_type()
   bool result = true;
   for(int i = formals->first(); formals->more(i); i = formals->next(i))
     if (!formals->nth(i)->verify_type()) result = false;
+  if (!expr->verify_type()) result = false;
   return result;
 }
 
@@ -502,34 +502,28 @@ bool method_class::verify_type()
 bool attr_class::verify_type()
 {
   cout << "Evaluating attribute " << name << endl;
-  //return init->verify_type(); 
+  if (!init->verify_type()) return false; 
   return true;
 }
 
 bool formal_class::verify_type()
 {
-    cout << "Evaluating formal class" << endl;
+  /* TODO: figure out what to do for formal class. */
+  cout << "Evaluating formal class: " << name << endl;
    /*
    dump_line(stream,n,this);
    stream << pad(n) << "_formal\n";
    dump_Symbol(stream, n+2, name);
    dump_Symbol(stream, n+2, type_decl);
    */
-   return true;
-}
-
-void dump_program_tree (Classes classes) {
-  for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
-    Class_ current_class = classes->nth(i);
-    cout << "BEFORE" << endl;
-    current_class->verify_type();
-    cout << "AFTER" << endl;
-  }
+  return true;
 }
 
 bool branch_class::verify_type()
 {
   cout << "evaluating branch class" << endl;
+  bool result = true;
+  if (!expr->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_branch\n";
@@ -537,7 +531,9 @@ bool branch_class::verify_type()
    dump_Symbol(stream, n+2, type_decl);
    expr->dump_with_types(stream, n+2);
    */
-   return true;
+
+  return result;
+
 }
 
 //
@@ -549,6 +545,8 @@ bool branch_class::verify_type()
 bool assign_class::verify_type()
 {
   cout << "evaluating assign class" << endl;
+  bool result = true;
+  if (!expr->verify_type()) return false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_assign\n";
@@ -556,7 +554,7 @@ bool assign_class::verify_type()
    expr->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 //
@@ -567,6 +565,11 @@ bool assign_class::verify_type()
 bool static_dispatch_class::verify_type()
 {
   cout << "Evaluating static dispatch class" << endl;
+  bool result = true;
+  if (!expr->verify_type()) result = false;
+  for(int i = actual->first(); actual->more(i); i = actual->next(i))
+    if (!actual->nth(i)->verify_type()) result = false;
+
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_static_dispatch\n";
@@ -579,7 +582,7 @@ bool static_dispatch_class::verify_type()
    stream << pad(n+2) << ")\n";
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 //
@@ -589,6 +592,10 @@ bool static_dispatch_class::verify_type()
 bool dispatch_class::verify_type()
 {
   cout << "Evaluating dispatch class" << endl;
+  bool result = true;
+  if (!expr->verify_type()) result = false;
+  for(int i = actual->first(); actual->more(i); i = actual->next(i))
+    if (!actual->nth(i)->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_dispatch\n";
@@ -600,7 +607,7 @@ bool dispatch_class::verify_type()
    stream << pad(n+2) << ")\n";
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 //
@@ -610,6 +617,10 @@ bool dispatch_class::verify_type()
 bool cond_class::verify_type()
 {
   cout << "Evaluating cond class" << endl;
+  bool result = true;
+  if (!pred->verify_type() 
+      || !then_exp->verify_type()
+      || !else_exp->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_cond\n";
@@ -618,7 +629,7 @@ bool cond_class::verify_type()
    else_exp->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 //
@@ -628,6 +639,8 @@ bool cond_class::verify_type()
 bool loop_class::verify_type()
 {
   cout << "Evaluating loop class" << endl;
+  bool result = true;
+  if (!pred->verify_type() || !body->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_loop\n";
@@ -635,7 +648,7 @@ bool loop_class::verify_type()
    body->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 //
@@ -646,6 +659,12 @@ bool loop_class::verify_type()
 bool typcase_class::verify_type()
 {
   cout << "Evaluating typecase class" << endl;
+  bool result = true;
+  if (!expr->verify_type()) result = false;
+  for (int i = cases->first(); cases->more(i); i = cases->next(i))
+    if (!cases->nth(i)->verify_type()) result = false;
+  
+
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_typcase\n";
@@ -654,7 +673,7 @@ bool typcase_class::verify_type()
      cases->nth(i)->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 //
@@ -665,6 +684,9 @@ bool typcase_class::verify_type()
 bool block_class::verify_type()
 {
   cout << "Evaluating block class" << endl;
+  bool result = true;
+  for (int i = body->first(); body->more(i); i = body->next(i))
+    if (!body->nth(i)->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_block\n";
@@ -672,12 +694,16 @@ bool block_class::verify_type()
      body->nth(i)->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool let_class::verify_type()
 {
   cout << "Evaluating let class" << endl;
+  bool result = true;
+  if (!init->verify_type()) result = false;
+  if (!body->verify_type()) result = false;
+
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_let\n";
@@ -687,12 +713,16 @@ bool let_class::verify_type()
    body->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool plus_class::verify_type()
 {
   cout << "Evaluating plus class" << endl;
+  bool result = true;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
+
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_plus\n";
@@ -700,12 +730,16 @@ bool plus_class::verify_type()
    e2->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool sub_class::verify_type()
 {
   cout << "Evaluating sub class" << endl;
+  bool result = true;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
+
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_sub\n";
@@ -713,12 +747,16 @@ bool sub_class::verify_type()
    e2->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool mul_class::verify_type()
 {
   cout << "Evaluating mul class" << endl;
+  bool result = true;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
+
   /* 
    dump_line(stream,n,this);
    stream << pad(n) << "_mul\n";
@@ -726,12 +764,15 @@ bool mul_class::verify_type()
    e2->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool divide_class::verify_type()
 {
   cout << "Evaluating divide class" << endl;
+  bool result = true;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_divide\n";
@@ -739,24 +780,30 @@ bool divide_class::verify_type()
    e2->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool neg_class::verify_type()
 {
   cout << "Evaluating neg class" << endl;
+  bool result = true;
+  if (!e1->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_neg\n";
    e1->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool lt_class::verify_type()
 {
   cout << "Evaluating lt class" << endl;
+  bool result = true;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
+
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_lt\n";
@@ -764,13 +811,17 @@ bool lt_class::verify_type()
    e2->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 
 bool eq_class::verify_type()
 {
   cout << "Evaluating eq class" << endl;
+  bool result = true;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
+
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_eq\n";
@@ -778,12 +829,16 @@ bool eq_class::verify_type()
    e2->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool leq_class::verify_type()
 {
   cout << "Evaluating leq class" << endl;
+  bool result = true;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
+
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_leq\n";
@@ -791,23 +846,27 @@ bool leq_class::verify_type()
    e2->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool comp_class::verify_type()
 {
   cout << "Evaluating comp class" << endl;
+  bool result = true;
+  if (!e1->verify_type()) result = false;
+
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_comp\n";
    e1->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool int_const_class::verify_type()
 {
+  /* TODO: Figure out what to do with const class. */
   cout << "Evaluating int_const_class class" << endl;
   /*
    dump_line(stream,n,this);
@@ -820,6 +879,7 @@ bool int_const_class::verify_type()
 
 bool bool_const_class::verify_type()
 {
+  /* TODO: Figure out what to do with const class. */
   cout << "Evaluating bool_const_class class" << endl;
   /*
    dump_line(stream,n,this);
@@ -832,6 +892,7 @@ bool bool_const_class::verify_type()
 
 bool string_const_class::verify_type()
 {
+  /* TODO: Figure out what to do with const class. */
   cout << "Evaluating string_const_class class" << endl;
   /*
    dump_line(stream,n,this);
@@ -846,6 +907,7 @@ bool string_const_class::verify_type()
 
 bool new__class::verify_type()
 {
+  /* TODO: Figure out what to do with new class. */
   cout << "Evaluating new class" << endl;
   /*
    dump_line(stream,n,this);
@@ -859,17 +921,21 @@ bool new__class::verify_type()
 bool isvoid_class::verify_type()
 {
   cout << "Evaluating isvoid class" << endl;
+  bool result = true;
+  if (!e1->verify_type()) result = false;
+
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_isvoid\n";
    e1->dump_with_types(stream, n+2);
    dump_type(stream,n);
    */
-  return true;
+  return result;
 }
 
 bool no_expr_class::verify_type()
 {
+  /* TODO: Figure out what to do with no expr class. */
   cout << "Evaluating no_expr_class class" << endl;
   /*
    dump_line(stream,n,this);
@@ -881,6 +947,7 @@ bool no_expr_class::verify_type()
 
 bool object_class::verify_type()
 {
+  /* TODO: Figure out what to do with object class. */
   cout << "Evaluating object class" << endl;
   /*
    dump_line(stream,n,this);
@@ -889,6 +956,15 @@ bool object_class::verify_type()
    dump_type(stream,n);
    */
   return true;
+}
+
+void dump_program_tree (Classes classes) {
+  for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
+    Class_ current_class = classes->nth(i);
+    cout << "BEFORE" << endl;
+    current_class->verify_type();
+    cout << "AFTER" << endl;
+  }
 }
 
 /*   This is the entry point to the semantic checker.
