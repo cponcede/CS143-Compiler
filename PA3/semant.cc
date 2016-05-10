@@ -478,6 +478,15 @@ Symbol MethodInfo::get_nth_argument_type (int n) {
   return this->arguments[n];
 }
 
+void dump_program_tree (Classes classes) {
+  for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
+    Class_ current_class = classes->nth(i);
+    cout << "BEFORE" << endl;
+    current_class->verify_type();
+    cout << "AFTER" << endl;
+  }
+}
+
 /*   This is the entry point to the semantic checker.
  
  Your checker should do the following two things:
@@ -503,10 +512,11 @@ void program_class::semant()
   if (classtable->has_cycles()) exit_gracefully_if_errors(classtable);
   
   /* some semantic analysis code may go here */
-  
+  printf ("WHERE AM I?\n");
   MethodTypeEnvironment *mte = new MethodTypeEnvironment (classes);
   mte->dump_type_environment();
-
+  cout << "AFTER DUMP" << endl;
+  dump_program_tree(classes);
   if (classtable->errors()) {
     cerr << "Compilation halted due to static semantic errors." << endl;
     exit(1);
