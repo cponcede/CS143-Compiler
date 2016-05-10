@@ -103,20 +103,24 @@ virtual bool verify_type();
 
 #define Formal_EXTRAS                              \
 virtual void dump_with_types(ostream&,int) = 0;		\
+virtual bool verify_type() = 0;						\
 virtual Symbol get_type() = 0;
 
 
 #define formal_EXTRAS                           \
 void dump_with_types(ostream&,int);				\
+bool verify_type();								\
 Symbol get_type () { return type_decl; }
 
 
 #define Case_EXTRAS                             \
-virtual void dump_with_types(ostream& ,int) = 0;
+virtual void dump_with_types(ostream& ,int) = 0;	\
+virtual bool verify_type() = 0;						\
 
 
 #define branch_EXTRAS                                   \
-void dump_with_types(ostream& ,int);
+void dump_with_types(ostream& ,int);	\
+bool verify_type();
 
 
 #define Expression_EXTRAS                    \
@@ -124,10 +128,12 @@ Symbol type;                                 \
 Symbol get_type() { return type; }           \
 Expression set_type(Symbol s) { type = s; return this; } \
 virtual void dump_with_types(ostream&,int) = 0;  \
+virtual bool verify_type() = 0;						\
 void dump_type(ostream&, int);               \
 Expression_class() { type = (Symbol) NULL; }
 
 #define Expression_SHARED_EXTRAS           \
-void dump_with_types(ostream&,int); 
+void dump_with_types(ostream&,int); \
+bool verify_type();
 
 #endif

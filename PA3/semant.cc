@@ -494,7 +494,7 @@ bool method_class::verify_type()
   cout << "Evaluating method " << name << endl;
   bool result = true;
   for(int i = formals->first(); formals->more(i); i = formals->next(i))
-    //result = formals->nth(i)->verify_type();
+    if (!formals->nth(i)->verify_type()) result = false;
   return result;
 }
 
@@ -506,6 +506,18 @@ bool attr_class::verify_type()
   return true;
 }
 
+bool formal_class::verify_type()
+{
+    cout << "Evaluating formal class" << endl;
+   /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_formal\n";
+   dump_Symbol(stream, n+2, name);
+   dump_Symbol(stream, n+2, type_decl);
+   */
+   return true;
+}
+
 void dump_program_tree (Classes classes) {
   for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
     Class_ current_class = classes->nth(i);
@@ -513,6 +525,370 @@ void dump_program_tree (Classes classes) {
     current_class->verify_type();
     cout << "AFTER" << endl;
   }
+}
+
+bool branch_class::verify_type()
+{
+  cout << "evaluating branch class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_branch\n";
+   dump_Symbol(stream, n+2, name);
+   dump_Symbol(stream, n+2, type_decl);
+   expr->dump_with_types(stream, n+2);
+   */
+   return true;
+}
+
+//
+// assign_class::dump_with_types prints "assign" and then (indented)
+// the variable being assigned, the expression, and finally the type
+// of the result.  Note the call to dump_type (see above) at the
+// end of the method.
+//
+bool assign_class::verify_type()
+{
+  cout << "evaluating assign class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_assign\n";
+   dump_Symbol(stream, n+2, name);
+   expr->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+//
+// static_dispatch_class::dump_with_types prints the expression,
+// static dispatch class, function name, and actual arguments
+// of any static dispatch.  
+//
+bool static_dispatch_class::verify_type()
+{
+  cout << "Evaluating static dispatch class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_static_dispatch\n";
+   expr->dump_with_types(stream, n+2);
+   dump_Symbol(stream, n+2, type_name);
+   dump_Symbol(stream, n+2, name);
+   stream << pad(n+2) << "(\n";
+   for(int i = actual->first(); actual->more(i); i = actual->next(i))
+     actual->nth(i)->dump_with_types(stream, n+2);
+   stream << pad(n+2) << ")\n";
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+//
+//   dispatch_class::dump_with_types is similar to 
+//   static_dispatch_class::dump_with_types 
+//
+bool dispatch_class::verify_type()
+{
+  cout << "Evaluating dispatch class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_dispatch\n";
+   expr->dump_with_types(stream, n+2);
+   dump_Symbol(stream, n+2, name);
+   stream << pad(n+2) << "(\n";
+   for(int i = actual->first(); actual->more(i); i = actual->next(i))
+     actual->nth(i)->dump_with_types(stream, n+2);
+   stream << pad(n+2) << ")\n";
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+//
+// cond_class::dump_with_types dumps each of the three expressions
+// in the conditional and then the type of the entire expression.
+//
+bool cond_class::verify_type()
+{
+  cout << "Evaluating cond class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_cond\n";
+   pred->dump_with_types(stream, n+2);
+   then_exp->dump_with_types(stream, n+2);
+   else_exp->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+//
+// loop_class::dump_with_types dumps the predicate and then the
+// body of the loop, and finally the type of the entire expression.
+//
+bool loop_class::verify_type()
+{
+  cout << "Evaluating loop class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_loop\n";
+   pred->dump_with_types(stream, n+2);
+   body->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+//
+//  typcase_class::dump_with_types dumps each branch of the
+//  the Case_ one at a time.  The type of the entire expression
+//  is dumped at the end.
+//
+bool typcase_class::verify_type()
+{
+  cout << "Evaluating typecase class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_typcase\n";
+   expr->dump_with_types(stream, n+2);
+   for(int i = cases->first(); cases->more(i); i = cases->next(i))
+     cases->nth(i)->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+//
+//  The rest of the cases for Expression are very straightforward
+//  and introduce nothing that isn't already in the code discussed
+//  above.
+//
+bool block_class::verify_type()
+{
+  cout << "Evaluating block class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_block\n";
+   for(int i = body->first(); body->more(i); i = body->next(i))
+     body->nth(i)->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool let_class::verify_type()
+{
+  cout << "Evaluating let class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_let\n";
+   dump_Symbol(stream, n+2, identifier);
+   dump_Symbol(stream, n+2, type_decl);
+   init->dump_with_types(stream, n+2);
+   body->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool plus_class::verify_type()
+{
+  cout << "Evaluating plus class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_plus\n";
+   e1->dump_with_types(stream, n+2);
+   e2->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool sub_class::verify_type()
+{
+  cout << "Evaluating sub class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_sub\n";
+   e1->dump_with_types(stream, n+2);
+   e2->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool mul_class::verify_type()
+{
+  cout << "Evaluating mul class" << endl;
+  /* 
+   dump_line(stream,n,this);
+   stream << pad(n) << "_mul\n";
+   e1->dump_with_types(stream, n+2);
+   e2->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool divide_class::verify_type()
+{
+  cout << "Evaluating divide class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_divide\n";
+   e1->dump_with_types(stream, n+2);
+   e2->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool neg_class::verify_type()
+{
+  cout << "Evaluating neg class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_neg\n";
+   e1->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool lt_class::verify_type()
+{
+  cout << "Evaluating lt class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_lt\n";
+   e1->dump_with_types(stream, n+2);
+   e2->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+
+bool eq_class::verify_type()
+{
+  cout << "Evaluating eq class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_eq\n";
+   e1->dump_with_types(stream, n+2);
+   e2->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool leq_class::verify_type()
+{
+  cout << "Evaluating leq class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_leq\n";
+   e1->dump_with_types(stream, n+2);
+   e2->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool comp_class::verify_type()
+{
+  cout << "Evaluating comp class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_comp\n";
+   e1->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool int_const_class::verify_type()
+{
+  cout << "Evaluating int_const_class class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_int\n";
+   dump_Symbol(stream, n+2, token);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool bool_const_class::verify_type()
+{
+  cout << "Evaluating bool_const_class class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_bool\n";
+   dump_Boolean(stream, n+2, val);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool string_const_class::verify_type()
+{
+  cout << "Evaluating string_const_class class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_string\n";
+   stream << pad(n+2) << "\"";
+   print_escaped_string(stream,token->get_string());
+   stream << "\"\n";
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool new__class::verify_type()
+{
+  cout << "Evaluating new class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_new\n";
+   dump_Symbol(stream, n+2, type_name);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool isvoid_class::verify_type()
+{
+  cout << "Evaluating isvoid class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_isvoid\n";
+   e1->dump_with_types(stream, n+2);
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool no_expr_class::verify_type()
+{
+  cout << "Evaluating no_expr_class class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_no_expr\n";
+   dump_type(stream,n);
+   */
+  return true;
+}
+
+bool object_class::verify_type()
+{
+  cout << "Evaluating object class" << endl;
+  /*
+   dump_line(stream,n,this);
+   stream << pad(n) << "_object\n";
+   dump_Symbol(stream, n+2, name);
+   dump_type(stream,n);
+   */
+  return true;
 }
 
 /*   This is the entry point to the semantic checker.
