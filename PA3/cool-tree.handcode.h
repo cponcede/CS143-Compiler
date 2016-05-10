@@ -8,7 +8,6 @@
 #include "tree.h"
 #include "cool.h"
 #include "symtab.h"
-#include "semant.h"
 #include "stringtab.h"
 #define yylineno curr_lineno;
 extern int yylineno;
@@ -63,7 +62,7 @@ virtual void dump_with_types(ostream&,int) = 0; 	\
 virtual Symbol get_name() = 0;						\
 virtual Symbol get_parent() = 0;					\
 virtual Features get_features() = 0;				\
-virtual bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *) = 0;						
+virtual bool verify_type() = 0;						
                     
 
 
@@ -73,7 +72,7 @@ void dump_with_types(ostream&,int);						\
 Symbol get_name() { return name; }						\
 Symbol get_parent() { return parent ? parent : NULL; }	\
 Features get_features() { return features; }			\
-virtual bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *);								
+virtual bool verify_type();								
 
 
 
@@ -83,7 +82,7 @@ virtual bool is_method() = 0;								\
 virtual Symbol get_name() = 0;								\
 virtual Symbol get_type() = 0;								\
 virtual Formals get_formals() = 0;							\
-virtual bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *) = 0;								
+virtual bool verify_type() = 0;								
 
 
 #define Feature_SHARED_EXTRAS                                   \
@@ -95,34 +94,34 @@ Symbol get_name() { return name; }
 bool is_method() { return true; }							\
 Symbol get_type() { return return_type; }					\
 Formals get_formals() { return formals; }					\
-virtual bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *);					
+virtual bool verify_type();					
 
 #define attr_EXTRAS											\
 bool is_method() { return false; }							\
 Symbol get_type() { return type_decl; }						\
 Formals get_formals() {return NULL; }						\
-virtual bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *);					
+virtual bool verify_type();					
 
 #define Formal_EXTRAS                              \
 virtual void dump_with_types(ostream&,int) = 0;		\
-virtual bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *) = 0;						\
+virtual bool verify_type() = 0;						\
 virtual Symbol get_type() = 0;
 
 
 #define formal_EXTRAS                           \
 void dump_with_types(ostream&,int);				\
-bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *);								\
+bool verify_type();								\
 Symbol get_type () { return type_decl; }
 
 
 #define Case_EXTRAS                             \
 virtual void dump_with_types(ostream& ,int) = 0;	\
-virtual bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *) = 0;						\
+virtual bool verify_type() = 0;						\
 
 
 #define branch_EXTRAS                                   \
 void dump_with_types(ostream& ,int);	\
-bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *);
+bool verify_type();
 
 
 #define Expression_EXTRAS                    \
@@ -130,12 +129,12 @@ Symbol type;                                 \
 Symbol get_type() { return type; }           \
 Expression set_type(Symbol s) { type = s; return this; } \
 virtual void dump_with_types(ostream&,int) = 0;  \
-virtual bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *) = 0;						\
+virtual bool verify_type() = 0;						\
 void dump_type(ostream&, int);               \
 Expression_class() { type = (Symbol) NULL; }
 
 #define Expression_SHARED_EXTRAS           \
 void dump_with_types(ostream&,int); \
-bool verify_type(SymbolTable<Symbol, Symbol> *, MethodTypeEnvironment *);
+bool verify_type();
 
 #endif

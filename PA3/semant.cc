@@ -81,6 +81,9 @@ static void initialize_constants(void)
   val         = idtable.add_string("_val");
 }
 
+/* Static global variables. */
+static MethodTypeEnvironment *mte;
+static SymbolTable<Symbol, Symbol> *st;
 
 /*
  * Adds a class to the current ClassTable with the name class_name and
@@ -476,7 +479,7 @@ void report_error() {
   return;
 }
 
-bool class__class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool class__class::verify_type()
 {
   cout << "Evaluating class " << name << endl;
   st->enterscope();
@@ -484,29 +487,29 @@ bool class__class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnviro
   /* First, go through attributes to verify and add to symbol table. */
   for(int i = features->first(); features->more(i); i = features->next(i)) {
     if (!features->nth(i)->is_method()) {
-      features->nth(i)->verify_type (st,mte);
+      features->nth(i)->verify_type();
     }
   }
 
   /* Second, go through and verify methods. */  
   for(int j = features->first(); features->more(j); j = features->next(j)) {
     if (!features->nth(j)->is_method()) continue;
-    if (!features->nth(j)->verify_type(st, mte)) result = false;
+    if (!features->nth(j)->verify_type()) result = false;
   }
     
   st->exitscope();
   return result;
 }
 
-bool method_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool method_class::verify_type()
 {
   cout << "Evaluating method " << name << endl;
   st->enterscope();
   bool result = true;
   for(int i = formals->first(); formals->more(i); i = formals->next(i))
-    if (!formals->nth(i)->verify_type(st, mte)) result = false;
-  if (!expr->verify_type(st, mte)) result = false;
-  if (!expr->get_type() == return_type) {
+    if (!formals->nth(i)->verify_type()) result = false;
+  if (!expr->verify_type()) result = false;
+  if (expr->get_type() != return_type) {
     report_error();
     result = false;
   }
@@ -515,7 +518,7 @@ bool method_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnviro
 }
 
 
-bool attr_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool attr_class::verify_type()
 {
   /* TODO:
     return true if the expression is either no_expr_class or
@@ -524,7 +527,7 @@ bool attr_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironm
     If this is the case, set object identifier to be of type T in st
     */
   cout << "Evaluating attribute " << name << endl;
-  if (!init->verify_type(st, mte)) return false;
+  if (!init->verify_type()) return false;
   if (init->get_type() != type_decl && init->get_type() != No_type) {
     report_error();
     return false;
@@ -533,7 +536,7 @@ bool attr_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironm
   return true;
 }
 
-bool formal_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool formal_class::verify_type()
 {
   /* TODO: figure out what to do for formal class. */
   cout << "Evaluating formal class: " << name << endl;
@@ -546,11 +549,11 @@ bool formal_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnviro
   return true;
 }
 
-bool branch_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool branch_class::verify_type()
 {
   cout << "evaluating branch class" << endl;
   bool result = true;
-  if (!expr->verify_type(st, mte)) result = false;
+  if (!expr->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_branch\n";
@@ -569,11 +572,11 @@ bool branch_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnviro
 // of the result.  Note the call to dump_type (see above) at the
 // end of the method.
 //
-bool assign_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool assign_class::verify_type()
 {
   cout << "evaluating assign class" << endl;
   bool result = true;
-  if (!expr->verify_type(st, mte)) return false;
+  if (!expr->verify_type()) return false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_assign\n";
@@ -589,13 +592,13 @@ bool assign_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnviro
 // static dispatch class, function name, and actual arguments
 // of any static dispatch.  
 //
-bool static_dispatch_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool static_dispatch_class::verify_type()
 {
   cout << "Evaluating static dispatch class" << endl;
   bool result = true;
-  if (!expr->verify_type(st, mte)) result = false;
+  if (!expr->verify_type()) result = false;
   for(int i = actual->first(); actual->more(i); i = actual->next(i))
-    if (!actual->nth(i)->verify_type(st, mte)) result = false;
+    if (!actual->nth(i)->verify_type()) result = false;
 
   /*
    dump_line(stream,n,this);
@@ -616,13 +619,13 @@ bool static_dispatch_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodT
 //   dispatch_class::dump_with_types is similar to 
 //   static_dispatch_class::dump_with_types 
 //
-bool dispatch_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool dispatch_class::verify_type()
 {
   cout << "Evaluating dispatch class" << endl;
   bool result = true;
-  if (!expr->verify_type(st, mte)) result = false;
+  if (!expr->verify_type()) result = false;
   for(int i = actual->first(); actual->more(i); i = actual->next(i))
-    if (!actual->nth(i)->verify_type(st, mte)) result = false;
+    if (!actual->nth(i)->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_dispatch\n";
@@ -641,13 +644,13 @@ bool dispatch_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvi
 // cond_class::dump_with_types dumps each of the three expressions
 // in the conditional and then the type of the entire expression.
 //
-bool cond_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool cond_class::verify_type()
 {
   cout << "Evaluating cond class" << endl;
   bool result = true;
-  if (!pred->verify_type(st, mte) 
-      || !then_exp->verify_type(st, mte)
-      || !else_exp->verify_type(st, mte)) result = false;
+  if (!pred->verify_type() 
+      || !then_exp->verify_type()
+      || !else_exp->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_cond\n";
@@ -663,11 +666,11 @@ bool cond_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironm
 // loop_class::dump_with_types dumps the predicate and then the
 // body of the loop, and finally the type of the entire expression.
 //
-bool loop_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool loop_class::verify_type()
 {
   cout << "Evaluating loop class" << endl;
   bool result = true;
-  if (!pred->verify_type(st, mte) || !body->verify_type(st, mte)) result = false;
+  if (!pred->verify_type() || !body->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_loop\n";
@@ -683,13 +686,13 @@ bool loop_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironm
 //  the Case_ one at a time.  The type of the entire expression
 //  is dumped at the end.
 //
-bool typcase_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool typcase_class::verify_type()
 {
   cout << "Evaluating typecase class" << endl;
   bool result = true;
-  if (!expr->verify_type(st, mte)) result = false;
+  if (!expr->verify_type()) result = false;
   for (int i = cases->first(); cases->more(i); i = cases->next(i))
-    if (!cases->nth(i)->verify_type(st, mte)) result = false;
+    if (!cases->nth(i)->verify_type()) result = false;
   
 
   /*
@@ -708,12 +711,12 @@ bool typcase_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvir
 //  and introduce nothing that isn't already in the code discussed
 //  above.
 //
-bool block_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool block_class::verify_type()
 {
   cout << "Evaluating block class" << endl;
   bool result = true;
   for (int i = body->first(); body->more(i); i = body->next(i))
-    if (!body->nth(i)->verify_type(st, mte)) result = false;
+    if (!body->nth(i)->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_block\n";
@@ -724,12 +727,12 @@ bool block_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnviron
   return result;
 }
 
-bool let_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool let_class::verify_type()
 {
   cout << "Evaluating let class" << endl;
   bool result = true;
-  if (!init->verify_type(st, mte)) result = false;
-  if (!body->verify_type(st, mte)) result = false;
+  if (!init->verify_type()) result = false;
+  if (!body->verify_type()) result = false;
 
   /*
    dump_line(stream,n,this);
@@ -743,12 +746,12 @@ bool let_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironme
   return result;
 }
 
-bool plus_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool plus_class::verify_type()
 {
   cout << "Evaluating plus class" << endl;
   bool result = true;
-  if (!e1->verify_type(st, mte)) result = false;
-  if (!e2->verify_type(st, mte)) result = false;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
 
   /*
    dump_line(stream,n,this);
@@ -760,12 +763,12 @@ bool plus_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironm
   return result;
 }
 
-bool sub_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool sub_class::verify_type()
 {
   cout << "Evaluating sub class" << endl;
   bool result = true;
-  if (!e1->verify_type(st, mte)) result = false;
-  if (!e2->verify_type(st, mte)) result = false;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
 
   /*
    dump_line(stream,n,this);
@@ -777,12 +780,12 @@ bool sub_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironme
   return result;
 }
 
-bool mul_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool mul_class::verify_type()
 {
   cout << "Evaluating mul class" << endl;
   bool result = true;
-  if (!e1->verify_type(st, mte)) result = false;
-  if (!e2->verify_type(st, mte)) result = false;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
 
   /* 
    dump_line(stream,n,this);
@@ -794,12 +797,12 @@ bool mul_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironme
   return result;
 }
 
-bool divide_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool divide_class::verify_type()
 {
   cout << "Evaluating divide class" << endl;
   bool result = true;
-  if (!e1->verify_type(st, mte)) result = false;
-  if (!e2->verify_type(st, mte)) result = false;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_divide\n";
@@ -810,11 +813,11 @@ bool divide_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnviro
   return result;
 }
 
-bool neg_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool neg_class::verify_type()
 {
   cout << "Evaluating neg class" << endl;
   bool result = true;
-  if (!e1->verify_type(st, mte)) result = false;
+  if (!e1->verify_type()) result = false;
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_neg\n";
@@ -824,12 +827,12 @@ bool neg_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironme
   return result;
 }
 
-bool lt_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool lt_class::verify_type()
 {
   cout << "Evaluating lt class" << endl;
   bool result = true;
-  if (!e1->verify_type(st, mte)) result = false;
-  if (!e2->verify_type(st, mte)) result = false;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
 
   /*
    dump_line(stream,n,this);
@@ -842,12 +845,12 @@ bool lt_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironmen
 }
 
 
-bool eq_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool eq_class::verify_type()
 {
   cout << "Evaluating eq class" << endl;
   bool result = true;
-  if (!e1->verify_type(st, mte)) result = false;
-  if (!e2->verify_type(st, mte)) result = false;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
 
   /*
    dump_line(stream,n,this);
@@ -859,12 +862,12 @@ bool eq_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironmen
   return result;
 }
 
-bool leq_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool leq_class::verify_type()
 {
   cout << "Evaluating leq class" << endl;
   bool result = true;
-  if (!e1->verify_type(st, mte)) result = false;
-  if (!e2->verify_type(st, mte)) result = false;
+  if (!e1->verify_type()) result = false;
+  if (!e2->verify_type()) result = false;
 
   /*
    dump_line(stream,n,this);
@@ -876,11 +879,11 @@ bool leq_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironme
   return result;
 }
 
-bool comp_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool comp_class::verify_type()
 {
   cout << "Evaluating comp class" << endl;
   bool result = true;
-  if (!e1->verify_type(st, mte)) result = false;
+  if (!e1->verify_type()) result = false;
 
   /*
    dump_line(stream,n,this);
@@ -891,7 +894,7 @@ bool comp_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironm
   return result;
 }
 
-bool int_const_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool int_const_class::verify_type()
 {
   /* TODO: Figure out what to do with const class. */
   cout << "Evaluating int_const_class class" << endl;
@@ -904,7 +907,7 @@ bool int_const_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnv
   return true;
 }
 
-bool bool_const_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool bool_const_class::verify_type()
 {
   /* TODO: Figure out what to do with const class. */
   cout << "Evaluating bool_const_class class" << endl;
@@ -917,7 +920,7 @@ bool bool_const_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEn
   return true;
 }
 
-bool string_const_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool string_const_class::verify_type()
 {
   /* TODO: Figure out what to do with const class. */
   cout << "Evaluating string_const_class class" << endl;
@@ -932,7 +935,7 @@ bool string_const_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodType
   return true;
 }
 
-bool new__class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool new__class::verify_type()
 {
   /* TODO: Figure out what to do with new class. */
   cout << "Evaluating new class" << endl;
@@ -945,11 +948,11 @@ bool new__class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironm
   return true;
 }
 
-bool isvoid_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool isvoid_class::verify_type()
 {
   cout << "Evaluating isvoid class" << endl;
   bool result = true;
-  if (!e1->verify_type(st, mte)) result = false;
+  if (!e1->verify_type()) result = false;
 
   /*
    dump_line(stream,n,this);
@@ -960,7 +963,7 @@ bool isvoid_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnviro
   return result;
 }
 
-bool no_expr_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool no_expr_class::verify_type()
 {
   /* TODO: Figure out what to do with no expr class. */
   cout << "Evaluating no_expr_class class" << endl;
@@ -972,7 +975,7 @@ bool no_expr_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvir
   return true;
 }
 
-bool object_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte)
+bool object_class::verify_type()
 {
   /* TODO: Figure out what to do with object class. */
   cout << "Evaluating object class" << endl;
@@ -985,11 +988,11 @@ bool object_class::verify_type(SymbolTable<Symbol, Symbol> *st, MethodTypeEnviro
   return true;
 }
 
-void dump_program_tree (Classes classes, SymbolTable<Symbol, Symbol> *st, MethodTypeEnvironment *mte) {
+void dump_program_tree (Classes classes) {
   for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
     Class_ current_class = classes->nth(i);
     cout << "BEFORE" << endl;
-    current_class->verify_type(st, mte);
+    current_class->verify_type();
     cout << "AFTER" << endl;
   }
 }
@@ -1007,6 +1010,8 @@ void dump_program_tree (Classes classes, SymbolTable<Symbol, Symbol> *st, Method
  errors. Part 2) can be done in a second stage, when you want
  to build mycoolc.
  */
+
+
 void program_class::semant()
 {
   initialize_constants();
@@ -1020,11 +1025,11 @@ void program_class::semant()
   
   /* some semantic analysis code may go here */
   printf ("WHERE AM I?\n");
-  MethodTypeEnvironment *mte = new MethodTypeEnvironment (classes);
+  mte = new MethodTypeEnvironment (classes);
   mte->dump_type_environment();
   cout << "AFTER DUMP" << endl;
-  SymbolTable<Symbol, Symbol> *st = new SymbolTable<Symbol, Symbol>();
-  dump_program_tree(classes, st, mte);
+  st = new SymbolTable<Symbol, Symbol>();
+  dump_program_tree(classes);
   if (classtable->errors()) {
     cerr << "Compilation halted due to static semantic errors." << endl;
     exit(1);

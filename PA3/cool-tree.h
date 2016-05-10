@@ -10,8 +10,6 @@
 
 
 #include "tree.h"
-#include "symtab.h"
-#include "semant.h"
 #include "cool-tree.handcode.h"
 
 

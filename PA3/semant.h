@@ -7,7 +7,6 @@
 #include <map>
 #include <vector>
 
-class MethodTypeEnvironment;
 
 #include "cool-tree.h"
 #include "stringtab.h"
