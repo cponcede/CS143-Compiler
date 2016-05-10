@@ -54,13 +54,14 @@ virtual void dump_with_types(ostream&, int) = 0;
 void semant();     				\
 void dump_with_types(ostream&, int);            
 
+
 #define Class__EXTRAS                   \
 virtual Symbol get_filename() = 0;      \
 virtual void dump_with_types(ostream&,int) = 0; 	\
 virtual Symbol get_name() = 0;						\
 virtual Symbol get_parent() = 0;					\
-virtual void verify_type() = 0;						\
-virtual Features get_features() = 0;
+virtual Features get_features() = 0;				\
+virtual bool verify_type() = 0;						
                     
 
 
@@ -70,11 +71,7 @@ void dump_with_types(ostream&,int);						\
 Symbol get_name() { return name; }						\
 Symbol get_parent() { return parent ? parent : NULL; }	\
 Features get_features() { return features; }			\
-void verify_type() {									\
-  cout << "Evaluating class " << name << endl;			\
-  for (int i = features->first(); features->more(i); i = features->next(i)) \
-     features->nth(i)->verify_type();					\
-}
+virtual bool verify_type();								
 
 
 
@@ -84,7 +81,7 @@ virtual bool is_method() = 0;								\
 virtual Symbol get_name() = 0;								\
 virtual Symbol get_type() = 0;								\
 virtual Formals get_formals() = 0;							\
-virtual void verify_type() = 0;
+virtual bool verify_type() = 0;								
 
 
 #define Feature_SHARED_EXTRAS                                   \
@@ -96,22 +93,13 @@ Symbol get_name() { return name; }
 bool is_method() { return true; }							\
 Symbol get_type() { return return_type; }					\
 Formals get_formals() { return formals; }					\
-void verify_type() {										\
-   cout << "Evaluating method " << name << endl;			\
-   for(int i = formals->first(); formals->more(i); i = formals->next(i)) { \
-   		/*formals->nth(i)->dump_with_types(stream, n+2); */ \
-   }														\
-   	  /*expr->dump_with_types(stream, n+2); */ \
-}
+virtual bool verify_type();					
 
 #define attr_EXTRAS											\
 bool is_method() { return false; }							\
 Symbol get_type() { return type_decl; }						\
 Formals get_formals() {return NULL; }						\
-void verify_type() {										\
-   cout << "Evaluating attribute " << name << endl;			\
-   /*init->dump_with_types(stream, n+2); */					\
-}
+virtual bool verify_type();					
 
 #define Formal_EXTRAS                              \
 virtual void dump_with_types(ostream&,int) = 0;		\

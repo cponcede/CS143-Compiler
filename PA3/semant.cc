@@ -478,6 +478,34 @@ Symbol MethodInfo::get_nth_argument_type (int n) {
   return this->arguments[n];
 }
 
+
+bool class__class::verify_type()
+{
+  cout << "Evaluating class " << name << endl;
+  bool result = true;
+  for(int i = features->first(); features->more(i); i = features->next(i))
+    if (!features->nth(i)->verify_type())
+      result = false;
+  return result;
+}
+
+bool method_class::verify_type()
+{
+  cout << "Evaluating method " << name << endl;
+  bool result = true;
+  for(int i = formals->first(); formals->more(i); i = formals->next(i))
+    //result = formals->nth(i)->verify_type();
+  return result;
+}
+
+
+bool attr_class::verify_type()
+{
+  cout << "Evaluating attribute " << name << endl;
+  //return init->verify_type(); 
+  return true;
+}
+
 void dump_program_tree (Classes classes) {
   for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
     Class_ current_class = classes->nth(i);
