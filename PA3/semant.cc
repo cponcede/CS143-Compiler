@@ -685,6 +685,15 @@ bool static_dispatch_class::verify_type()
     result = false;
   }
   Symbol class_name = expr->get_type();
+  Symbol expected_class_name = this->type_name;
+
+  /* Extra check for expected type in static dispatch. */
+  if (!is_subclass(class_name, expected_class_name)) {
+    classtable->semant_error(current_class) << "Type of expression in "
+      << "static dispatch statement does not match type " << expected_class_name << endl;
+    this->type = Object;
+    result = false;
+  }
 
   for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
     if (!actual->nth(i)->verify_type()) {
@@ -722,7 +731,8 @@ bool dispatch_class::verify_type()
     result = false;
   }
   Symbol class_name = expr->get_type();
-
+  if (class_name == No_type)
+    class_name = current_class->get_name();
   for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
     if (!actual->nth(i)->verify_type()) {
       this->type = Object;
