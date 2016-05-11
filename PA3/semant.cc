@@ -83,7 +83,7 @@ static void initialize_constants(void)
 
 /* Static global variables. */
 static MethodTypeEnvironment *mte;
-static SymbolTable<Symbol, Symbol> *st;
+static SymbolTable<Symbol, Entry> *st;
 static ClassTable *classtable;
 Class_ current_class;
 
@@ -373,15 +373,36 @@ void MethodTypeEnvironment::install_basic_classes() {
   this->environment_map[IO] = io_class_info;
 }
 
-Symbol MethodTypeEnvironment::get_return_type (Class_ cl, Symbol method_name) {
+/* Checks the provided class and its superclasses until a method matching the name provided is found.
+   Returns the nth argument type of that method. */
+Symbol MethodTypeEnvironment::get_nth_argument_type (int n, Symbol class_name, Symbol method_name) {
+  Symbol argument_type = NULL;
+  while (class_name != No_class) {
+    if (this->environment_map.find(class_name) == this->environment_map.end())
+      return NULL;
+    ClassMethodInfo *cminfo = this->environment_map[class_name];
+    argument_type = cminfo->get_nth_argument_type(method_name, n);
+    if (argument_type) return argument_type;
+    class_name = classtable->inherits_from(class_name);
+  }
+  return argument_type;
+}
+
+/* Checks the provided class and its superclasses until a method matching the name provided
+ * is found. Returns the return value of that method. */
+Symbol MethodTypeEnvironment::get_return_type (Symbol class_name, Symbol method_name) {
   Symbol return_type = NULL;
-  while (cl->get_name() != No_class) {
-    Symbol class_name = cl->get_name();
+  while (class_name != No_class) {
+    if (this->environment_map.find(class_name) == this->environment_map.end())
+      return NULL;
     ClassMethodInfo *cminfo = this->environment_map[class_name];
     Symbol return_type = cminfo->get_method_return_type(method_name);
-    if (return_type) break;
+    if (return_type) {
+      cout << "Found return type " << return_type << " for class " << class_name << ", method " << method_name << endl;
+      return return_type;
+    }
+    class_name = classtable->inherits_from(class_name);
   }
-
   return return_type;
 }
 
@@ -434,7 +455,6 @@ ClassMethodInfo::ClassMethodInfo(Class_ cl) {
       continue;
     Symbol method_name = feat->get_name();
 
-    cout << "Creating method info in class: " << cl->get_name() << endl;
     MethodInfo *new_method_info = new MethodInfo(feat);
     this->method_map[method_name] = new_method_info;
   }
@@ -456,7 +476,6 @@ Symbol ClassMethodInfo::get_nth_argument_type (Symbol method_name, int n) {
 
 MethodInfo::MethodInfo (Feature meth) {
   this->return_type = meth->get_type ();
-  cout << "Creating a method named: " << meth->get_name() << " with type: " << this->return_type << endl;
   Formals argument_list = meth->get_formals ();
   for (int i = argument_list->first(); argument_list->more(i); i = argument_list->next(i)) {
     this->arguments.push_back (argument_list->nth(i)->get_type());
@@ -476,12 +495,21 @@ Symbol MethodInfo::get_nth_argument_type (int n) {
   return this->arguments[n];
 }
 
-/* Returns true of child_class is a subclass of ancestor. */
+/* Returns true if child_class is a subclass of ancestor or ancestor itself. */
 bool is_subclass (Symbol child_class, Symbol ancestor) {
+  if (child_class == NULL || ancestor == NULL) {
+    cerr << "Null class passed into is_subclass." << endl;
+    return false;
+  }
+  if (ancestor == SELF_TYPE) return false;
+  if (child_class == SELF_TYPE)
+    child_class = current_class->get_name(); /* TODO: Figure out if this is enough for SELF_TYPE */
   Symbol parent = child_class;
   while (true) {
-    if (parent == ancestor)
+    if (parent == ancestor) {
+      cout << "is_subclass(" << child_class << ", " << ancestor << ") is true" << endl;
       return true;
+    }
     if (parent == No_class)
       return false;
     parent = classtable->inherits_from(parent);
@@ -547,18 +575,16 @@ bool method_class::verify_type()
   /* TODO: Add self to symbol table. Don't know how right now. */
 
   for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
-    Symbol formal_name = formals->nth(i)->get_name();
-    Symbol formal_type = formals->nth(i)->get_type();
-    
-    cout << "Formal type is " << formal_type << endl;
-    cout << "Formal name is " << formal_name << endl;
-    st->addid(formal_name, &formal_type);
+    st->addid(formals->nth(i)->get_name(), formals->nth(i)->get_type());
   }
     
   if (!expr->verify_type()) {
+    cout << "Verifying expression type failed." << endl;
     st->exitscope();
     return false;
   }
+  cout << "In method!! " << this->name << endl;
+  cout << "Checking expr type " << expr->get_type() << endl;
   if (!is_subclass(expr->get_type(), return_type)) {
     classtable->semant_error(current_class) << "Method " << name << "'s expression type of " 
       << expr->get_type() << " does not match method's return type of " << return_type << endl;
@@ -572,12 +598,6 @@ bool method_class::verify_type()
 
 bool attr_class::verify_type()
 {
-  /* TODO:
-    return true if the expression is either no_expr_class or
-    matches with the type declared in the attribute
-
-    If this is the case, set object identifier to be of type T in st
-    */
   cout << "Evaluating attribute " << name << endl;
   if (!init->verify_type()) return false;
   if (init->get_type() != type_decl && init->get_type() != No_type) {
@@ -585,7 +605,7 @@ bool attr_class::verify_type()
       << init->get_type() << " does not match expected type " << type_decl << endl;
     return false;
   }
-  st->addid(name, &type_decl);
+  st->addid(name, type_decl);
   return true;
 }
 
@@ -602,7 +622,7 @@ bool branch_class::verify_type()
   cout << "evaluating branch class" << endl;
   bool result = true;
   st->enterscope();
-  st->addid(name, &type_decl);
+  st->addid(name, type_decl);
   if (!expr->verify_type()) {
     this->type = Object;
     return false;
@@ -623,27 +643,29 @@ bool assign_class::verify_type()
   cout << "evaluating assign statement for variable " << name << endl;
 
   /* Look for object ID in symbol table. */
-  Symbol *found_type = st->lookup(name);
+  Symbol found_type = st->lookup(name);
   if (found_type == NULL) {
     classtable->semant_error(current_class) << "Object identifier " << name <<
       " in assign statement not found in symbol table." << endl;
     this->type = Object;
     return false;
   }
+  cout << "Type found for variable " << name << " is " << found_type << endl;
 
   /* Verify that the assignment expression's type is valid and a subclass of return type. */
   if (!expr->verify_type()) {
     this->type = Object;
     return false;
   }
-  if (!is_subclass(expr->get_type(), *found_type)) {
+  if (!is_subclass(expr->get_type(), found_type)) {
     classtable->semant_error(current_class) << "Object identifier " << name <<
-      " does not match type of its assignment" << endl;
+      " with type " << found_type <<
+      " does not match type of its assignment " << expr->get_type() << endl;
     this->type = Object;
     return false;
   }
 
-  this->type = *found_type;
+  this->type = found_type;
   return true;
 }
 
@@ -654,26 +676,34 @@ bool assign_class::verify_type()
 //
 bool static_dispatch_class::verify_type()
 {
-  /* TODO: Implement. */
+  /* TODO: Update to work for static dispatch. */
 
-  cout << "Evaluating static dispatch class" << endl;
+  cout << "Evaluating static dispatch" << endl;
   bool result = true;
-  if (!expr->verify_type()) result = false;
-  for(int i = actual->first(); actual->more(i); i = actual->next(i))
-    if (!actual->nth(i)->verify_type()) result = false;
+  if (!expr->verify_type()) {
+    this->type = Object;
+    result = false;
+  }
+  Symbol class_name = expr->get_type();
 
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_static_dispatch\n";
-   expr->dump_with_types(stream, n+2);
-   dump_Symbol(stream, n+2, type_name);
-   dump_Symbol(stream, n+2, name);
-   stream << pad(n+2) << "(\n";
-   for(int i = actual->first(); actual->more(i); i = actual->next(i))
-     actual->nth(i)->dump_with_types(stream, n+2);
-   stream << pad(n+2) << ")\n";
-   dump_type(stream,n);
-   */
+  for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
+    if (!actual->nth(i)->verify_type()) {
+      this->type = Object;
+      result = false;
+      continue;
+    }
+    Symbol expected_arg_type = mte->get_nth_argument_type(i, class_name, this->name);
+    if (!is_subclass(actual->nth(i)->get_type(),expected_arg_type)) {
+      classtable->semant_error(current_class) << "Call to function " << this->name
+        << " in class " << class_name << " does not match prototype." << endl;
+      this->type = Object;
+      result = false;
+    }
+  }
+
+  if (result == true)
+    this->type = mte->get_return_type(class_name, this->name);
+
   return result;
 }
 
@@ -683,24 +713,38 @@ bool static_dispatch_class::verify_type()
 //
 bool dispatch_class::verify_type()
 {
-  /* TODO: Implement. */
+  /* TODO: Implement extra dispatch details. */
 
   cout << "Evaluating dispatch class" << endl;
   bool result = true;
-  if (!expr->verify_type()) result = false;
-  for(int i = actual->first(); actual->more(i); i = actual->next(i))
-    if (!actual->nth(i)->verify_type()) result = false;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_dispatch\n";
-   expr->dump_with_types(stream, n+2);
-   dump_Symbol(stream, n+2, name);
-   stream << pad(n+2) << "(\n";
-   for(int i = actual->first(); actual->more(i); i = actual->next(i))
-     actual->nth(i)->dump_with_types(stream, n+2);
-   stream << pad(n+2) << ")\n";
-   dump_type(stream,n);
-   */
+  if (!expr->verify_type()) {
+    this->type = Object;
+    result = false;
+  }
+  Symbol class_name = expr->get_type();
+
+  for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
+    if (!actual->nth(i)->verify_type()) {
+      this->type = Object;
+      result = false;
+      continue;
+    }
+    Symbol expected_arg_type = mte->get_nth_argument_type(i, class_name, this->name);
+    if (!is_subclass(actual->nth(i)->get_type(),expected_arg_type)) {
+      classtable->semant_error(current_class) << "Call to function " << this->name
+        << " in class " << class_name << " does not match prototype." << endl;
+      this->type = Object;
+      result = false;
+    }
+  }
+
+  if (result) {
+    cout << "Looking in MTE for class " << class_name << " and method " << this->name << endl;
+    Symbol return_type = mte->get_return_type(class_name, this->name);
+    this->type = return_type;
+    cout << "Set this->type to " << return_type << endl;
+  }
+
   return result;
 }
 
@@ -821,7 +865,7 @@ bool let_class::verify_type()
 
   /* Evaluate body using new object. */
   st->enterscope();
-  st->addid(identifier, &type_decl);
+  st->addid(identifier, type_decl);
 
   if (!body->verify_type()) {
     this->type = Object;
@@ -1033,7 +1077,7 @@ bool int_const_class::verify_type()
 
 bool bool_const_class::verify_type()
 {
-  cout << "Evaluating Evaluating a BOOL_CONST" << endl;
+  cout << "Evaluating a BOOL_CONST" << endl;
   this->type = Bool;
   return true;
 }
@@ -1084,22 +1128,22 @@ bool object_class::verify_type()
     return true;
   }
   /* Look up variable in symbol table. */
-  Symbol *found_type = st->lookup(name);
+  Symbol found_type = st->lookup(this->name);
   if (found_type == NULL) {
     classtable->semant_error(current_class) << "Object identifier " << name <<
       " not found in symbol table." << endl;
+    return false;
   }
-  cout << "Assigning object id " << name << " type " << *found_type << endl;
-  this->type = *found_type;
+  cout << "Assigning object id " << name << " type " << found_type << endl;
+  this->type = found_type;  
   return true;
 }
+
 
 void verify_types (Classes classes) {
   for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
     Class_ current_class = classes->nth(i);
-    cout << "BEFORE" << endl;
     current_class->verify_type();
-    cout << "AFTER" << endl;
   }
 }
 
@@ -1132,9 +1176,9 @@ void program_class::semant()
   /* some semantic analysis code may go here */
   printf ("WHERE AM I?\n");
   mte = new MethodTypeEnvironment (classes);
-  mte->dump_type_environment();
+  //mte->dump_type_environment();
   cout << "AFTER DUMP" << endl;
-  st = new SymbolTable<Symbol, Symbol>();
+  st = new SymbolTable<Symbol, Entry>();
   verify_types(classes);
   exit_gracefully_if_errors(classtable);
   if (classtable->errors()) {
