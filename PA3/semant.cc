@@ -511,6 +511,8 @@ Symbol lub (Symbol class_one, Symbol class_two) {
 
 bool class__class::verify_type()
 {
+  /* TODO: Check for overriden methods. */
+  /* TODO: Check for inherited attributes/methods. */
   cout << "Evaluating class " << name << endl;
   st->enterscope();
   current_class = this;
@@ -518,14 +520,18 @@ bool class__class::verify_type()
   /* First, go through attributes to verify and add to symbol table. */
   for(int i = features->first(); features->more(i); i = features->next(i)) {
     if (!features->nth(i)->is_method()) {
-      features->nth(i)->verify_type();
+      if (!features->nth(i)->verify_type())
+        result = false;
+
     }
   }
 
   /* Second, go through and verify methods. */  
   for(int j = features->first(); features->more(j); j = features->next(j)) {
     if (!features->nth(j)->is_method()) continue;
-    if (!features->nth(j)->verify_type()) result = false;
+    if (!features->nth(j)->verify_type()) {
+      result = false;
+    }
   }
     
   st->exitscope();
@@ -535,18 +541,32 @@ bool class__class::verify_type()
 bool method_class::verify_type()
 {
   cout << "Evaluating method " << name << endl;
+
+  /* Add self and formal parameters to symbol table. */
   st->enterscope();
-  bool result = true;
-  for(int i = formals->first(); formals->more(i); i = formals->next(i))
-    if (!formals->nth(i)->verify_type()) result = false;
-  if (!expr->verify_type()) result = false;
-  if (expr->get_type() != return_type) {
+  /* TODO: Add self to symbol table. Don't know how right now. */
+
+  for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
+    Symbol formal_name = formals->nth(i)->get_name();
+    Symbol formal_type = formals->nth(i)->get_type();
+    
+    cout << "Formal type is " << formal_type << endl;
+    cout << "Formal name is " << formal_name << endl;
+    st->addid(formal_name, &formal_type);
+  }
+    
+  if (!expr->verify_type()) {
+    st->exitscope();
+    return false;
+  }
+  if (!is_subclass(expr->get_type(), return_type)) {
     classtable->semant_error(current_class) << "Method " << name << "'s expression type of " 
       << expr->get_type() << " does not match method's return type of " << return_type << endl;
-    result = false;
+    st->exitscope();
+    return false;
   }
   st->exitscope();
-  return result;
+  return true;
 }
 
 
@@ -571,14 +591,8 @@ bool attr_class::verify_type()
 
 bool formal_class::verify_type()
 {
-  /* TODO: figure out what to do for formal class. */
-  cout << "Evaluating formal class: " << name << endl;
-   /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_formal\n";
-   dump_Symbol(stream, n+2, name);
-   dump_Symbol(stream, n+2, type_decl);
-   */
+  cout << "Evaluating formal with name " << name << endl;
+  /* TODO: Find out if there is anything to check in here. */
   return true;
 }
 
@@ -587,17 +601,15 @@ bool branch_class::verify_type()
   /* TODO: Implement. */
   cout << "evaluating branch class" << endl;
   bool result = true;
-  if (!expr->verify_type()) result = false;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_branch\n";
-   dump_Symbol(stream, n+2, name);
-   dump_Symbol(stream, n+2, type_decl);
-   expr->dump_with_types(stream, n+2);
-   */
-
-  return result;
-
+  st->enterscope();
+  st->addid(name, &type_decl);
+  if (!expr->verify_type()) {
+    this->type = Object;
+    return false;
+  }
+  this->type = expr->get_type();
+  st->exitscope();
+  return true;
 }
 
 //
@@ -718,50 +730,46 @@ bool cond_class::verify_type()
   return true;
 }
 
-//
-// loop_class::dump_with_types dumps the predicate and then the
-// body of the loop, and finally the type of the entire expression.
-//
+
 bool loop_class::verify_type()
 {
-  /* TODO: Implement. */
   cout << "Evaluating loop class" << endl;
-  bool result = true;
-  if (!pred->verify_type() || !body->verify_type()) result = false;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_loop\n";
-   pred->dump_with_types(stream, n+2);
-   body->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  /* Set type to Object no matter what for loops. */
+  this->type = Object;
+  if (!pred->verify_type() || !body->verify_type()) {
+    return false;
+  }
+  /* Verify predicate is a boolean. */
+  if (pred->get_type() != Bool) {
+    classtable->semant_error(current_class) << "Predicate in loop not of type Bool" << endl;
+    return false;
+  }
+  return true;
 }
 
-//
-//  typcase_class::dump_with_types dumps each branch of the
-//  the Case_ one at a time.  The type of the entire expression
-//  is dumped at the end.
-//
+
 bool typcase_class::verify_type()
 {
-  /* TODO: Implement. */
-
-  cout << "Evaluating typecase class" << endl;
+  /* TODO: Add checks for duplicate branches? */
   bool result = true;
-  if (!expr->verify_type()) result = false;
-  for (int i = cases->first(); cases->more(i); i = cases->next(i))
-    if (!cases->nth(i)->verify_type()) result = false;
-  
+  cout << "Evaluating typecase class" << endl;
+  if (!expr->verify_type()) {
+    this->type = Object;
+    return false;
+  }
 
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_typcase\n";
-   expr->dump_with_types(stream, n+2);
-   for(int i = cases->first(); cases->more(i); i = cases->next(i))
-     cases->nth(i)->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
+  Symbol return_type = Object;
+
+  for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
+    /* If improper branch, mark as failure and skip to next branch. */
+    if (!cases->nth(i)->verify_type()) {
+      result = false;
+      continue;
+    }
+    /* Return type is lub(evaluted types of all n branches) */
+    return_type = lub(return_type, cases->nth(i)->get_type());
+  }
+  this->type = return_type;
   return result;
 }
 
@@ -790,25 +798,40 @@ bool block_class::verify_type()
 
 bool let_class::verify_type()
 {
-  cout << "Evaluating let class" << endl;
+  cout << "Evaluating let case" << endl;
   bool result = true;
-  if (!init->verify_type()) result = false;
-  if (!body->verify_type()) result = false;
-  if (result == false) {
+
+  /* Handle possible SELF_TYPE in type_decl */
+  Symbol declared_type = type_decl;
+  if (declared_type == SELF_TYPE)
+    /* TODO: Set declared_type to SELF_TYPE(C) */
+
+  /* Evaluate type of init and ensure it matches type_decl. */  
+  if (!init->verify_type()) {
     this->type = Object;
     return false;
   }
-  /* TODO: look more closely at this rule in the manual to understand. */
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_let\n";
-   dump_Symbol(stream, n+2, identifier);
-   dump_Symbol(stream, n+2, type_decl);
-   init->dump_with_types(stream, n+2);
-   body->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  Symbol init_type = init->get_type();
+  if (!is_subclass(init_type, declared_type)) {
+      classtable->semant_error(current_class) << "Object identifier " << identifier <<
+      " in let statement does not match type of its assignment" << endl;
+      this->type = Object;
+      return false;
+  }
+
+  /* Evaluate body using new object. */
+  st->enterscope();
+  st->addid(identifier, &type_decl);
+
+  if (!body->verify_type()) {
+    this->type = Object;
+    st->exitscope();
+    return false;
+  }
+
+  this->type = body->get_type();
+  st->exitscope();
+  return true;
 }
 
 bool plus_class::verify_type()
@@ -1024,19 +1047,12 @@ bool string_const_class::verify_type()
 
 bool new__class::verify_type()
 {
-  /* TODO: Figure out what to do with new class. */
   cout << "Evaluating new expression for typename " << type_name << endl;
   if (type_name == SELF_TYPE) {
     /* TODO: set this->type to SELF_TYPE(C) */
   } else {
     this->type = type_name;
   }
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_new\n";
-   dump_Symbol(stream, n+2, type_name);
-   dump_type(stream,n);
-   */
   return true;
 }
 
@@ -1044,31 +1060,30 @@ bool isvoid_class::verify_type()
 {
   cout << "Evaluating isvoid class" << endl;
   bool result = true;
-  if (!e1->verify_type()) result = false;
-
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_isvoid\n";
-   e1->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  if (!e1->verify_type()) {
+    this->type = Object;
+    return false;
+  }
+  this->type = Bool;
+  return true;
 }
 
 bool no_expr_class::verify_type()
 {
   /* TODO: Figure out what to do with no expr class. */
-  cout << "Evaluating no_expr_class class" << endl;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_no_expr\n";
-   dump_type(stream,n);
-   */
+  cout << "Evaluating no_expr" << endl;
+  this->type = No_type;
   return true;
 }
 
 bool object_class::verify_type()
 {
+  /* self is of type SELF_TYPE */
+  if (this->name == self) {
+    this->type = SELF_TYPE;
+    return true;
+  }
+  /* Look up variable in symbol table. */
   Symbol *found_type = st->lookup(name);
   if (found_type == NULL) {
     classtable->semant_error(current_class) << "Object identifier " << name <<
@@ -1127,5 +1142,3 @@ void program_class::semant()
     exit(1);
   }
 }
-
-

@@ -249,6 +249,7 @@ class branch_class : public Case_class {
 protected:
    Symbol name;
    Symbol type_decl;
+   Symbol type;
    Expression expr;
 public:
    branch_class(Symbol a1, Symbol a2, Expression a3) {

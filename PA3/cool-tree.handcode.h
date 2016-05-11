@@ -105,22 +105,27 @@ virtual bool verify_type();
 #define Formal_EXTRAS                              \
 virtual void dump_with_types(ostream&,int) = 0;		\
 virtual bool verify_type() = 0;						\
-virtual Symbol get_type() = 0;
+virtual Symbol get_type() = 0;						\
+virtual Symbol get_name() = 0;
 
 
 #define formal_EXTRAS                           \
 void dump_with_types(ostream&,int);				\
 bool verify_type();								\
-Symbol get_type () { return type_decl; }
+Symbol get_type () { return type_decl; }		\
+Symbol get_name() { return name; }				
 
 
 #define Case_EXTRAS                             \
 virtual void dump_with_types(ostream& ,int) = 0;	\
 virtual bool verify_type() = 0;						\
+Symbol type;										\
+Symbol get_type() { return type; }					\
 
 
 #define branch_EXTRAS                                   \
 void dump_with_types(ostream& ,int);	\
+Symbol get_type() { return type; }				\
 bool verify_type();
 
 
