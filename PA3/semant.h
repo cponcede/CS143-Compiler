@@ -29,13 +29,13 @@ private:
   int semant_errors;
   void install_basic_classes();
   void add_class(Class_);
-  Symbol inherits_from(Symbol);
   bool is_present_once(Symbol);
   bool check_symbol_for_cycles(Symbol);
   ostream& error_stream;
   
 public:
   ClassTable(Classes);
+  Symbol inherits_from(Symbol);
   int errors() { return semant_errors; }
   bool has_cycles();
   bool all_defined();

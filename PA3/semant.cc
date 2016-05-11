@@ -84,6 +84,8 @@ static void initialize_constants(void)
 /* Static global variables. */
 static MethodTypeEnvironment *mte;
 static SymbolTable<Symbol, Symbol> *st;
+static ClassTable *classtable;
+Class_ current_class;
 
 /*
  * Adds a class to the current ClassTable with the name class_name and
@@ -474,15 +476,44 @@ Symbol MethodInfo::get_nth_argument_type (int n) {
   return this->arguments[n];
 }
 
-void report_error() {
-  cout << "WE FOUND AN ERROR" << endl;
-  return;
+/* Returns true of child_class is a subclass of ancestor. */
+bool is_subclass (Symbol child_class, Symbol ancestor) {
+  Symbol parent = child_class;
+  while (true) {
+    if (parent == ancestor)
+      return true;
+    if (parent == No_class)
+      return false;
+    parent = classtable->inherits_from(parent);
+  }
 }
+
+/* Returns the first common ancestor class between the two
+ * provided classes. 
+ */
+Symbol lub (Symbol class_one, Symbol class_two) {
+  /* TODO: Implement */
+  std::set<Symbol> class_one_ancestors;
+  Symbol class_one_parent = class_one;
+  while (class_one_parent != No_class) {
+    class_one_ancestors.insert(class_one_parent);
+    class_one_parent = classtable->inherits_from(class_one_parent);
+  }
+  Symbol class_two_parent = class_two;
+  while (class_two_parent != No_class) {
+    if (class_one_ancestors.find(class_two_parent) != class_one_ancestors.end())
+      return class_two_parent;
+    class_two_parent = classtable->inherits_from(class_two_parent);
+  }
+  return No_class;
+}
+
 
 bool class__class::verify_type()
 {
   cout << "Evaluating class " << name << endl;
   st->enterscope();
+  current_class = this;
   bool result = true;
   /* First, go through attributes to verify and add to symbol table. */
   for(int i = features->first(); features->more(i); i = features->next(i)) {
@@ -510,7 +541,8 @@ bool method_class::verify_type()
     if (!formals->nth(i)->verify_type()) result = false;
   if (!expr->verify_type()) result = false;
   if (expr->get_type() != return_type) {
-    report_error();
+    classtable->semant_error(current_class) << "Method " << name << "'s expression type of " 
+      << expr->get_type() << " does not match method's return type of " << return_type << endl;
     result = false;
   }
   st->exitscope();
@@ -529,7 +561,8 @@ bool attr_class::verify_type()
   cout << "Evaluating attribute " << name << endl;
   if (!init->verify_type()) return false;
   if (init->get_type() != type_decl && init->get_type() != No_type) {
-    report_error();
+    classtable->semant_error(current_class) << "Attribute initialization of type "
+      << init->get_type() << " does not match expected type " << type_decl << endl;
     return false;
   }
   st->addid(name, &type_decl);
@@ -551,6 +584,7 @@ bool formal_class::verify_type()
 
 bool branch_class::verify_type()
 {
+  /* TODO: Implement. */
   cout << "evaluating branch class" << endl;
   bool result = true;
   if (!expr->verify_type()) result = false;
@@ -574,17 +608,31 @@ bool branch_class::verify_type()
 //
 bool assign_class::verify_type()
 {
-  cout << "evaluating assign class" << endl;
-  bool result = true;
-  if (!expr->verify_type()) return false;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_assign\n";
-   dump_Symbol(stream, n+2, name);
-   expr->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  cout << "evaluating assign statement for variable " << name << endl;
+
+  /* Look for object ID in symbol table. */
+  Symbol *found_type = st->lookup(name);
+  if (found_type == NULL) {
+    classtable->semant_error(current_class) << "Object identifier " << name <<
+      " in assign statement not found in symbol table." << endl;
+    this->type = Object;
+    return false;
+  }
+
+  /* Verify that the assignment expression's type is valid and a subclass of return type. */
+  if (!expr->verify_type()) {
+    this->type = Object;
+    return false;
+  }
+  if (!is_subclass(expr->get_type(), *found_type)) {
+    classtable->semant_error(current_class) << "Object identifier " << name <<
+      " does not match type of its assignment" << endl;
+    this->type = Object;
+    return false;
+  }
+
+  this->type = *found_type;
+  return true;
 }
 
 //
@@ -594,6 +642,8 @@ bool assign_class::verify_type()
 //
 bool static_dispatch_class::verify_type()
 {
+  /* TODO: Implement. */
+
   cout << "Evaluating static dispatch class" << endl;
   bool result = true;
   if (!expr->verify_type()) result = false;
@@ -621,6 +671,8 @@ bool static_dispatch_class::verify_type()
 //
 bool dispatch_class::verify_type()
 {
+  /* TODO: Implement. */
+
   cout << "Evaluating dispatch class" << endl;
   bool result = true;
   if (!expr->verify_type()) result = false;
@@ -648,18 +700,22 @@ bool cond_class::verify_type()
 {
   cout << "Evaluating cond class" << endl;
   bool result = true;
+
+  /* Ensure subexpressions are valid. */
   if (!pred->verify_type() 
       || !then_exp->verify_type()
-      || !else_exp->verify_type()) result = false;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_cond\n";
-   pred->dump_with_types(stream, n+2);
-   then_exp->dump_with_types(stream, n+2);
-   else_exp->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+      || !else_exp->verify_type()) {
+    this->type = Object;
+    return false;
+  }
+  /* Ensure predicate is a boolean. */
+  if (pred->get_type() != Bool) {
+    classtable->semant_error(current_class) << "Predicate in if-statement not of type Bool" << endl;
+    this->type = Object;
+    return false;
+  }
+  this->type = lub(then_exp->get_type(), else_exp->get_type());
+  return true;
 }
 
 //
@@ -668,6 +724,7 @@ bool cond_class::verify_type()
 //
 bool loop_class::verify_type()
 {
+  /* TODO: Implement. */
   cout << "Evaluating loop class" << endl;
   bool result = true;
   if (!pred->verify_type() || !body->verify_type()) result = false;
@@ -688,6 +745,8 @@ bool loop_class::verify_type()
 //
 bool typcase_class::verify_type()
 {
+  /* TODO: Implement. */
+
   cout << "Evaluating typecase class" << endl;
   bool result = true;
   if (!expr->verify_type()) result = false;
@@ -715,16 +774,18 @@ bool block_class::verify_type()
 {
   cout << "Evaluating block class" << endl;
   bool result = true;
-  for (int i = body->first(); body->more(i); i = body->next(i))
-    if (!body->nth(i)->verify_type()) result = false;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_block\n";
-   for(int i = body->first(); body->more(i); i = body->next(i))
-     body->nth(i)->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+
+  /* Set type of block equal to last expression in block. */
+  for (int i = body->first(); body->more(i); i = body->next(i)) {
+    if (!body->nth(i)->verify_type()) 
+      result = false;
+    this->type = body->nth(i)->get_type();
+  }
+  if (result == false) {
+    this->type = Object;
+    return false;
+  }
+  return true;
 }
 
 bool let_class::verify_type()
@@ -733,7 +794,11 @@ bool let_class::verify_type()
   bool result = true;
   if (!init->verify_type()) result = false;
   if (!body->verify_type()) result = false;
-
+  if (result == false) {
+    this->type = Object;
+    return false;
+  }
+  /* TODO: look more closely at this rule in the manual to understand. */
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_let\n";
@@ -748,100 +813,120 @@ bool let_class::verify_type()
 
 bool plus_class::verify_type()
 {
-  cout << "Evaluating plus class" << endl;
+  cout << "Evaluating plus operation" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
-
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_plus\n";
-   e1->dump_with_types(stream, n+2);
-   e2->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  if (result == false) {
+    this->type = Object;
+    return false;
+  }
+  if (e1->get_type() != Int || e2->get_type() != Int) {
+    classtable->semant_error(current_class) << 
+      "Both expressions in a plus operation are not of type Int" << endl;
+    this->type = Object;
+    return false;
+  }
+  this->type = Int;
+  return true;
 }
 
 bool sub_class::verify_type()
 {
-  cout << "Evaluating sub class" << endl;
+  cout << "Evaluating sub operation" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
-
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_sub\n";
-   e1->dump_with_types(stream, n+2);
-   e2->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  if (result == false) {
+    this->type = Object;
+    return false;
+  }
+  if (e1->get_type() != Int || e2->get_type() != Int) {
+    classtable->semant_error(current_class) << 
+      "Both expressions in a subtraction operation are not of type Int" << endl;
+    this->type = Object;
+    return false;
+  }
+  this->type = Int;
+  return true;
 }
 
 bool mul_class::verify_type()
 {
-  cout << "Evaluating mul class" << endl;
+  cout << "Evaluating mul operation" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
-
-  /* 
-   dump_line(stream,n,this);
-   stream << pad(n) << "_mul\n";
-   e1->dump_with_types(stream, n+2);
-   e2->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  if (result == false) {
+    this->type = Object;
+    return false;
+  }
+  if (e1->get_type() != Int || e2->get_type() != Int) {
+    classtable->semant_error(current_class) << 
+      "Both expressions in a multiply operation are not of type Int" << endl;
+    this->type = Object;
+    return false;
+  }
+  this->type = Int;
+  return true;
 }
 
 bool divide_class::verify_type()
 {
-  cout << "Evaluating divide class" << endl;
+  cout << "Evaluating divide operation" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_divide\n";
-   e1->dump_with_types(stream, n+2);
-   e2->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  if (result == false) {
+    this->type = Object;
+    return false;
+  }
+  if (e1->get_type() != Int || e2->get_type() != Int) {
+    classtable->semant_error(current_class) << 
+      "Both expressions in a divide operation are not of type Int" << endl;
+    this->type = Object;
+    return false;
+  }
+  this->type = Int;
+  return true;
 }
 
 bool neg_class::verify_type()
 {
   cout << "Evaluating neg class" << endl;
   bool result = true;
-  if (!e1->verify_type()) result = false;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_neg\n";
-   e1->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
+  if (!e1->verify_type()) {
+    this->type = Object;
+    return false;
+  }
+  if (e1->get_type() != Int) {
+    classtable->semant_error(current_class) << 
+      "Attempting to negate something other than an Int" << endl;
+    this->type = Object;
+    return false;
+  }
+  this->type = Int;
   return result;
 }
 
 bool lt_class::verify_type()
 {
-  cout << "Evaluating lt class" << endl;
+  cout << "Evaluating lt operator" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
-
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_lt\n";
-   e1->dump_with_types(stream, n+2);
-   e2->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  if (result == false) {
+    this->type = Object;
+    return false;
+  }
+  if (e1->get_type() != Int or e2->get_type() != Int) {
+    this->type = Object;
+    classtable->semant_error(current_class) << 
+      "Attempting to compare something other than an Int" << endl;
+    return false;
+  }
+  this->type = Bool;
+  return true;
 }
 
 
@@ -851,94 +936,101 @@ bool eq_class::verify_type()
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
+  if (result == false) {
+    this->type = Object;
+    return false;
+  }
+  bool type_check_required = false;
+  if (e1->get_type() == Int  ||
+      e1->get_type() == Str  ||
+      e1->get_type() == Bool ||
+      e2->get_type() == Int  ||
+      e2->get_type() == Str  ||
+      e2->get_type() == Bool )
+    type_check_required = true;
 
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_eq\n";
-   e1->dump_with_types(stream, n+2);
-   e2->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  if (type_check_required) {
+    if (e1->get_type() != e2->get_type()) {
+      this->type = Object;
+      classtable->semant_error(current_class) << 
+        "Attempting to compare using == mismatching basic types (Int, Bool, or String)" << endl;
+      return false;
+    }
+  }
+  
+  this->type = Bool;
+  return true;
 }
 
 bool leq_class::verify_type()
 {
-  cout << "Evaluating leq class" << endl;
+  /* TODO: Implement */
+  cout << "Evaluating leq operator" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
-
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_leq\n";
-   e1->dump_with_types(stream, n+2);
-   e2->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  if (result == false) {
+    this->type = Object;
+    return false;
+  }
+  if (e1->get_type() != Int or e2->get_type() != Int) {
+    this->type = Object;
+    classtable->semant_error(current_class) << 
+      "Attempting to compare something other than an Int" << endl;
+    return false;
+  }
+  this->type = Bool;
+  return true;
 }
 
 bool comp_class::verify_type()
 {
   cout << "Evaluating comp class" << endl;
   bool result = true;
-  if (!e1->verify_type()) result = false;
-
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_comp\n";
-   e1->dump_with_types(stream, n+2);
-   dump_type(stream,n);
-   */
-  return result;
+  if (!e1->verify_type()) {
+    this->type = Object;
+    return false;
+  }
+  if (e1->get_type() != Bool) {
+    classtable->semant_error(current_class) << 
+      "Attempting to NOT something other than a Bool" << endl;
+    this->type = Object;
+    return false;
+  }
+  this->type = Bool;
+  return true;
 }
 
 bool int_const_class::verify_type()
 {
-  /* TODO: Figure out what to do with const class. */
-  cout << "Evaluating int_const_class class" << endl;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_int\n";
-   dump_Symbol(stream, n+2, token);
-   dump_type(stream,n);
-   */
+  cout << "Evaluating an INT_CONST" << endl;
+  this->type = Int;
   return true;
 }
 
 bool bool_const_class::verify_type()
 {
-  /* TODO: Figure out what to do with const class. */
-  cout << "Evaluating bool_const_class class" << endl;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_bool\n";
-   dump_Boolean(stream, n+2, val);
-   dump_type(stream,n);
-   */
+  cout << "Evaluating Evaluating a BOOL_CONST" << endl;
+  this->type = Bool;
   return true;
 }
 
 bool string_const_class::verify_type()
 {
-  /* TODO: Figure out what to do with const class. */
-  cout << "Evaluating string_const_class class" << endl;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_string\n";
-   stream << pad(n+2) << "\"";
-   print_escaped_string(stream,token->get_string());
-   stream << "\"\n";
-   dump_type(stream,n);
-   */
+  cout << "Evaluating a STR_CONST" << endl;
+  this->type = Str;
   return true;
 }
 
 bool new__class::verify_type()
 {
   /* TODO: Figure out what to do with new class. */
-  cout << "Evaluating new class" << endl;
+  cout << "Evaluating new expression for typename " << type_name << endl;
+  if (type_name == SELF_TYPE) {
+    /* TODO: set this->type to SELF_TYPE(C) */
+  } else {
+    this->type = type_name;
+  }
   /*
    dump_line(stream,n,this);
    stream << pad(n) << "_new\n";
@@ -977,18 +1069,17 @@ bool no_expr_class::verify_type()
 
 bool object_class::verify_type()
 {
-  /* TODO: Figure out what to do with object class. */
-  cout << "Evaluating object class" << endl;
-  /*
-   dump_line(stream,n,this);
-   stream << pad(n) << "_object\n";
-   dump_Symbol(stream, n+2, name);
-   dump_type(stream,n);
-   */
+  Symbol *found_type = st->lookup(name);
+  if (found_type == NULL) {
+    classtable->semant_error(current_class) << "Object identifier " << name <<
+      " not found in symbol table." << endl;
+  }
+  cout << "Assigning object id " << name << " type " << *found_type << endl;
+  this->type = *found_type;
   return true;
 }
 
-void dump_program_tree (Classes classes) {
+void verify_types (Classes classes) {
   for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
     Class_ current_class = classes->nth(i);
     cout << "BEFORE" << endl;
@@ -1017,7 +1108,7 @@ void program_class::semant()
   initialize_constants();
   
   /* ClassTable constructor may do some semantic analysis */
-  ClassTable *classtable = new ClassTable(classes);
+  classtable = new ClassTable(classes);
   exit_gracefully_if_errors(classtable);
   
   if (!classtable->all_defined()) exit_gracefully_if_errors(classtable);
@@ -1029,7 +1120,8 @@ void program_class::semant()
   mte->dump_type_environment();
   cout << "AFTER DUMP" << endl;
   st = new SymbolTable<Symbol, Symbol>();
-  dump_program_tree(classes);
+  verify_types(classes);
+  exit_gracefully_if_errors(classtable);
   if (classtable->errors()) {
     cerr << "Compilation halted due to static semantic errors." << endl;
     exit(1);
