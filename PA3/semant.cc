@@ -108,7 +108,7 @@ void ClassTable::add_class(Class_ current_class) {
     return;
   }
   /* Ensure no class attempts to inherit from basic classes other than Object. */
-  if (inherits_from == Bool || inherits_from == Int || inherits_from == Str || inherits_from == IO) {
+  if (inherits_from == Bool || inherits_from == Int || inherits_from == Str) {
     semant_error(current_class) << "Class " << class_name << " cannot inherit class "
       << inherits_from << "." << endl;
     return;
