@@ -39,6 +39,7 @@ public:
   int errors() { return semant_errors; }
   bool has_cycles();
   bool all_defined();
+  bool main_class_defined();
   
   ostream& semant_error();
   ostream& semant_error(Class_ c);
@@ -50,10 +51,12 @@ class MethodInfo {
 private:
   Symbol return_type;
 public:
-  std::vector<Symbol> arguments;
+  std::vector<Symbol> argument_types;
+  std::vector<Symbol> argument_names;
   MethodInfo (Feature meth);
   Symbol get_return_type ();
   Symbol get_nth_argument_type (int n);
+  Symbol get_nth_argument_name (int n);
 };
 
 class ClassMethodInfo {
@@ -62,6 +65,7 @@ public:
   ClassMethodInfo(Class_);
   Symbol get_method_return_type (Symbol method_name);
   Symbol get_nth_argument_type (Symbol method_name, int n);
+  Symbol get_nth_argument_name (Symbol method_name, int n);
   std::map<Symbol, MethodInfo* > method_map;
   std::map<Symbol, Symbol> attribute_map;
 
@@ -77,6 +81,7 @@ public:
   MethodTypeEnvironment (Classes);
   Symbol get_return_type (Symbol class_name, Symbol method_name);
   Symbol get_nth_argument_type (int n, Symbol class_name, Symbol method_name);
+  Symbol get_nth_argument_name (int n, Symbol class_name, Symbol method_name);
   bool has_attribute (Symbol class_name, Symbol attr_name);
   std::map<Symbol,Symbol> *get_class_attributes (Symbol class_name);
   void dump_type_environment (void);

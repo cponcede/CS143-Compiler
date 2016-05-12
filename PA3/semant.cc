@@ -97,11 +97,11 @@ void ClassTable::add_class(Class_ current_class) {
   
   /* Ensure no class is defined more than once. */
   if (class_name == SELF_TYPE) {
-    semant_error(current_class) << "A class cannot have name SELF_TYPE" << endl;
+    semant_error(current_class) << "A class cannot have name SELF_TYPE." << endl;
     return;
   }
   if (inherits_from == SELF_TYPE) {
-    semant_error(current_class) << "Class " << class_name << " incorrectly inherits from SELF_TYPE" << endl;
+    semant_error(current_class) << "Class " << class_name << " cannot inherit class SELF_TYPE" << endl;
   }
   if (this->inheritance_map[class_name]) {
     semant_error(current_class) << "Class with name " << class_name << " is defined multiple times." << endl;
@@ -109,8 +109,8 @@ void ClassTable::add_class(Class_ current_class) {
   }
   /* Ensure no class attempts to inherit from basic classes other than Object. */
   if (inherits_from == Bool || inherits_from == Int || inherits_from == Str) {
-    semant_error(current_class) << "Class with name: " << class_name << " attempts to inherit from "
-    << "basic class with name: " << inherits_from << endl;
+    semant_error(current_class) << "Class " << class_name << " cannot inherit class "
+      << inherits_from << "." << endl;
     return;
   }
   this->inheritance_map[class_name] = inherits_from;
@@ -178,6 +178,16 @@ bool ClassTable::all_defined() {
   }
   
   return all_defined;
+}
+
+bool ClassTable::main_class_defined() {
+  bool result = false;
+  for (std::map<Symbol, Symbol>::iterator it = this->inheritance_map.begin();
+       it != this->inheritance_map.end(); ++it) {
+    if (it->first == Main)
+      result = true;
+  }
+  return result;
 }
 
 
@@ -390,6 +400,19 @@ Symbol MethodTypeEnvironment::get_nth_argument_type (int n, Symbol class_name, S
   return argument_type;
 }
 
+Symbol MethodTypeEnvironment::get_nth_argument_name (int n, Symbol class_name, Symbol method_name) {
+  Symbol argument_name = NULL;
+  while (class_name != No_class) {
+    if (this->environment_map.find(class_name) == this->environment_map.end())
+      return NULL;
+    ClassMethodInfo *cminfo = this->environment_map[class_name];
+    argument_name = cminfo->get_nth_argument_name(method_name, n);
+    if (argument_name) return argument_name;
+    class_name = classtable->inherits_from(class_name);
+  }
+  return argument_name;
+}
+
 /* Checks the provided class and its superclasses until a method matching the name provided
  * is found. Returns the return value of that method. */
 Symbol MethodTypeEnvironment::get_return_type (Symbol class_name, Symbol method_name) {
@@ -400,7 +423,6 @@ Symbol MethodTypeEnvironment::get_return_type (Symbol class_name, Symbol method_
     ClassMethodInfo *cminfo = this->environment_map[class_name];
     Symbol return_type = cminfo->get_method_return_type(method_name);
     if (return_type) {
-      cout << "Found return type " << return_type << " for class " << class_name << ", method " << method_name << endl;
       return return_type;
     }
     class_name = classtable->inherits_from(class_name);
@@ -447,8 +469,8 @@ void MethodTypeEnvironment::dump_type_environment () {
       cout << "Now looking at the method named: " << mit->first;
       cout << " and return type: " << mit->second->get_return_type() << endl;
       cout << " it has arguments of type: ";
-      for (int i = 0; i < mit->second->arguments.size(); i++) {
-        cout << mit->second->arguments[i] << ", ";
+      for (int i = 0; i < mit->second->argument_types.size(); i++) {
+        cout << mit->second->argument_types[i] << ", ";
       }
       cout << endl;
 
@@ -497,11 +519,19 @@ Symbol ClassMethodInfo::get_nth_argument_type (Symbol method_name, int n) {
   return method_info->get_nth_argument_type(n);
 }
 
+Symbol ClassMethodInfo::get_nth_argument_name (Symbol method_name, int n) {
+  if (this->method_map.find(method_name) == this->method_map.end())
+    return NULL;
+  MethodInfo *method_info = this->method_map[method_name];
+  return method_info->get_nth_argument_name(n);
+}
+
 MethodInfo::MethodInfo (Feature meth) {
   this->return_type = meth->get_type ();
   Formals argument_list = meth->get_formals ();
   for (int i = argument_list->first(); argument_list->more(i); i = argument_list->next(i)) {
-    this->arguments.push_back (argument_list->nth(i)->get_type());
+    this->argument_types.push_back (argument_list->nth(i)->get_type());
+    this->argument_names.push_back (argument_list->nth(i)->get_name());
   }
 }
 
@@ -512,10 +542,17 @@ Symbol MethodInfo::get_return_type () {
 /* Returns the type of the nth formal of the given method. Returns
    NULL If no such nth formal exists. */
 Symbol MethodInfo::get_nth_argument_type (int n) {
-  if (this->arguments.size() <= n) {
+  if (this->argument_types.size() <= n) {
     return NULL;
   }
-  return this->arguments[n];
+  return this->argument_types[n];
+}
+
+Symbol MethodInfo::get_nth_argument_name(int n) {
+  if (this->argument_types.size() <= n) {
+    return NULL;
+  }
+  return this->argument_names[n];
 }
 
 /* Returns true if child_class is a subclass of ancestor or ancestor itself. */
@@ -532,7 +569,6 @@ bool is_subclass (Symbol child_class, Symbol ancestor) {
   Symbol parent = child_class;
   while (true) {
     if (parent == ancestor) {
-      cout << "is_subclass(" << child_class << ", " << ancestor << ") is true" << endl;
       return true;
     }
     if (parent == No_class)
@@ -585,7 +621,6 @@ void add_superclass_attributes_to_scope() {
 
 bool class__class::verify_type()
 {
-  cout << "Evaluating class " << name << endl;
   st->enterscope();
   current_class = this;
   bool result = true;
@@ -626,17 +661,21 @@ bool verify_proper_method_inheritence(Symbol name, Symbol return_type, Formals f
     result = false;
   int i;
   for(i = formals->first(); formals->more(i); i = formals->next(i)) {
-    if (mte->get_nth_argument_type(i, parent_class, name) != formals->nth(i)->get_type())
+    if (mte->get_nth_argument_type(i, parent_class, name) != formals->nth(i)->get_type()) {
+      if (mte->get_nth_argument_type(i, parent_class, name) == NULL)
+        classtable->semant_error(current_class->get_filename(), t) << "Incompatible number of formal "
+          << "parameters in redefined method " << name << endl;
+      else
+        classtable->semant_error(current_class->get_filename(), t) << "Incompatible formal parameter type "
+          << "in redefined method " << name << endl;
       result = false;
+    }
   }
   /* Check for too few arguments in overriden method. */
-  if (mte->get_nth_argument_type(i, parent_class, name) != NULL)
+  if (mte->get_nth_argument_type(i, parent_class, name) != NULL) {
+    classtable->semant_error(current_class->get_filename(), t) << "Incompatible number of formal "
+      << "parameters in redefined method " << name << endl;
     result = false;
-
-  if (result == false) {
-    classtable->semant_error(current_class->get_filename(), t) << "Inherited method " << name << "in class "
-          << current_class->get_name() << " does not match prototype defined in parent class "
-          << parent_class << endl;
   }
   return result;
 }
@@ -644,7 +683,6 @@ bool verify_proper_method_inheritence(Symbol name, Symbol return_type, Formals f
 
 bool method_class::verify_type()
 {
-  cout << "Evaluating method " << name << endl;
   bool result = true;
 
   if (this->name == self) {
@@ -674,7 +712,6 @@ bool method_class::verify_type()
   }
     
   if (!expr->verify_type()) {
-    cout << "Verifying expression type failed." << endl;
     result = false;
   }
 
@@ -695,7 +732,6 @@ bool method_class::verify_type()
 
 bool attr_class::verify_type()
 {
-  cout << "Evaluating attribute " << name << endl;
   bool result = true;
 
   if (this->name == self) {
@@ -707,8 +743,8 @@ bool attr_class::verify_type()
   Symbol parent_class = classtable->inherits_from(current_class->get_name());
   if (mte->has_attribute(parent_class, this->name)) {
     result = false;
-    classtable->semant_error(current_class->get_filename(), this) << "Attribute " << name << " in class "
-      << current_class->get_name() << " is previously defined in a parent class." << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Attribute " << this->name <<
+      " is an attribute of an inherited class." << endl;
   }
 
   if (!init->verify_type()) return false;
@@ -734,7 +770,6 @@ bool formal_class::verify_type()
 
 bool branch_class::verify_type()
 {
-  cout << "evaluating branch class" << endl;
   bool result = true;
   st->enterscope();
   st->addid(name, type_decl);
@@ -756,14 +791,13 @@ bool branch_class::verify_type()
 //
 bool assign_class::verify_type()
 {
-  cout << "evaluating assign statement for variable " << name << endl;
 
   /* Look for object ID in symbol table. */
   bool result = true;
   Symbol found_type = st->lookup(name);
   if (found_type == NULL) {
-    classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << name <<
-      " in assign statement not found in symbol table." << endl;
+    classtable->semant_error(current_class->get_filename(), this) <<
+      "Assignment to undeclared variable " << name << "." << endl;
     this->type = Object;
     result = false;
   }
@@ -773,6 +807,8 @@ bool assign_class::verify_type()
     this->type = Object;
     return false;
   }
+  if (!result)
+    return false;
   if (!is_subclass(expr->get_type(), found_type)) {
     classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << name <<
       " with type " << found_type <<
@@ -793,13 +829,14 @@ bool assign_class::verify_type()
 //
 bool static_dispatch_class::verify_type()
 {
-  cout << "Evaluating static dispatch" << endl;
   bool result = true;
   if (!expr->verify_type()) {
     this->type = Object;
     result = false;
   }
   Symbol class_name = expr->get_type();
+  if (class_name == SELF_TYPE)
+    class_name = current_class->get_name();
   Symbol expected_class_name = this->type_name;
 
   /* Extra check for expected type in static dispatch. */
@@ -834,7 +871,6 @@ bool static_dispatch_class::verify_type()
 
 bool dispatch_class::verify_type()
 {
-  cout << "Evaluating dispatch class" << endl;
   bool result = true;
   if (!expr->verify_type()) {
     this->type = Object;
@@ -843,29 +879,34 @@ bool dispatch_class::verify_type()
 
   /* If no object expression provided, use current cass. */
   Symbol class_name = expr->get_type();
+
   if (class_name == No_type)
+    class_name = current_class->get_name();
+
+  if (class_name == SELF_TYPE)
     class_name = current_class->get_name();
 
   for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
     if (!actual->nth(i)->verify_type()) {
+      actual->nth(i)->type = Object;
       this->type = Object;
       result = false;
-      continue;
     }
     Symbol expected_arg_type = mte->get_nth_argument_type(i, class_name, this->name);
+    Symbol expected_arg_name = mte->get_nth_argument_name(i, class_name, this->name);
     if (!is_subclass(actual->nth(i)->get_type(),expected_arg_type)) {
-      classtable->semant_error(current_class->get_filename(), this) << "Call to function " << this->name
-        << " in class " << class_name << " does not match prototype." << endl;
+      classtable->semant_error(current_class->get_filename(), this) << "In call of method "
+        << this->name << ", type " << actual->nth(i)->get_type() << " of parameter "
+        << expected_arg_name << " does not conform to declared type "
+        << expected_arg_type << "." << endl;
       this->type = Object;
       result = false;
     }
   }
 
   if (result) {
-    cout << "Looking in MTE for class " << class_name << " and method " << this->name << endl;
     Symbol return_type = mte->get_return_type(class_name, this->name);
     this->type = return_type;
-    cout << "Set this->type to " << return_type << endl;
   }
 
   return result;
@@ -877,7 +918,6 @@ bool dispatch_class::verify_type()
 //
 bool cond_class::verify_type()
 {
-  cout << "Evaluating cond class" << endl;
   bool result = true;
 
   /* Ensure subexpressions are valid. */
@@ -922,7 +962,6 @@ bool loop_class::verify_type()
 bool typcase_class::verify_type()
 {
   bool result = true;
-  cout << "Evaluating typecase class" << endl;
   if (!expr->verify_type()) {
     this->type = Object;
     return false;
@@ -974,7 +1013,6 @@ bool block_class::verify_type()
 
 bool let_class::verify_type()
 {
-  cout << "Evaluating let case" << endl;
   bool result = true;
 
   Symbol declared_type = type_decl;
@@ -1100,7 +1138,7 @@ bool neg_class::verify_type()
   }
   if (e1->get_type() != Int) {
     classtable->semant_error(current_class->get_filename(), this) << 
-      "Attempting to negate something other than an Int" << endl;
+      "Argument of \'~\' has type " << e1->get_type() << " instead of Int" << endl;
     this->type = Object;
     return false;
   }
@@ -1117,10 +1155,10 @@ bool lt_class::verify_type()
     this->type = Object;
     return false;
   }
-  if (e1->get_type() != Int or e2->get_type() != Int) {
+  if (e1->get_type() != Int || e2->get_type() != Int) {
     this->type = Object;
     classtable->semant_error(current_class->get_filename(), this) << 
-      "Attempting to compare something other than an Int" << endl;
+      "non-Int arguments: " << e1->get_type() << " < " << e2->get_type() << endl;
     return false;
   }
   this->type = Bool;
@@ -1150,7 +1188,7 @@ bool eq_class::verify_type()
     if (e1->get_type() != e2->get_type()) {
       this->type = Object;
       classtable->semant_error(current_class->get_filename(), this) << 
-        "Attempting to compare using == mismatching basic types (Int, Bool, or String)" << endl;
+        "Illegal comparison with a basic type." << endl;
       return false;
     }
   }
@@ -1171,7 +1209,7 @@ bool leq_class::verify_type()
   if (e1->get_type() != Int or e2->get_type() != Int) {
     this->type = Object;
     classtable->semant_error(current_class->get_filename(), this) << 
-      "Attempting to compare something other than an Int" << endl;
+      "non-Int arguments: " << e1->get_type() << " <= " << e2->get_type() << endl;
     return false;
   }
   this->type = Bool;
@@ -1187,7 +1225,7 @@ bool comp_class::verify_type()
   }
   if (e1->get_type() != Bool) {
     classtable->semant_error(current_class->get_filename(), this) << 
-      "Attempting to NOT something other than a Bool" << endl;
+      "Argument of \'not\' has type " << e1->get_type() << " instead of Bool." << endl;
     this->type = Object;
     return false;
   }
@@ -1250,8 +1288,8 @@ bool object_class::verify_type()
   /* Look up variable in symbol table. */
   Symbol found_type = st->lookup(this->name);
   if (found_type == NULL) {
-    classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << name <<
-      " not found in symbol table." << endl;
+    classtable->semant_error(current_class->get_filename(), this) <<
+      "Undeclared identifier " << this->name << "." << endl;
     return false;
   }
   this->type = found_type;  
@@ -1280,7 +1318,6 @@ void verify_types (Classes classes) {
  to build mycoolc.
  */
 
-
 void program_class::semant()
 {
   initialize_constants();
@@ -1293,11 +1330,11 @@ void program_class::semant()
   if (classtable->has_cycles()) exit_gracefully_if_errors(classtable);
   
   /* some semantic analysis code may go here */
-  printf ("WHERE AM I?\n");
   mte = new MethodTypeEnvironment (classes);
   //mte->dump_type_environment();
-  cout << "AFTER DUMP" << endl;
   st = new SymbolTable<Symbol, Entry>();
+  if (!classtable->main_class_defined())
+    classtable->semant_error() << "Class Main is not defined." << endl;
   verify_types(classes);
   exit_gracefully_if_errors(classtable);
   if (classtable->errors()) {
