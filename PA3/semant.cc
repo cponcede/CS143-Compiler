@@ -343,11 +343,6 @@ void exit_gracefully_if_errors(ClassTable *classtable) {
     exit(1);
   }
 }
- /*
- class MethodTypeEnvironment {
- TODO: Symbol get_nth_argument_type (int n, Symbol class_name, Symbol method_name);
- };
- */
 
 MethodTypeEnvironment::MethodTypeEnvironment (Classes classes) : semant_errors(0) , error_stream(cerr) {
   install_basic_classes();
@@ -406,6 +401,13 @@ Symbol MethodTypeEnvironment::get_return_type (Symbol class_name, Symbol method_
   return return_type;
 }
 
+std::map<Symbol, Symbol> *MethodTypeEnvironment::get_class_attributes (Symbol class_name) {
+  if (this->environment_map.find(class_name) == this->environment_map.end())
+      return NULL;
+  ClassMethodInfo *cminfo = this->environment_map[class_name];
+  return &cminfo->attribute_map;
+}
+
 /* The same error reporting functions provided for use in ClassTable,
    but adapted to work for MethodTypeEnvironment instead. */
 ostream& MethodTypeEnvironment::semant_error(Class_ c)
@@ -447,12 +449,26 @@ void MethodTypeEnvironment::dump_type_environment () {
   }
 }
 
+bool MethodTypeEnvironment::has_attribute (Symbol class_name, Symbol attr_name) {
+  while (class_name != No_class) {
+    ClassMethodInfo *cminfo = this->environment_map[class_name];
+    if (cminfo->attribute_map.find(attr_name) != cminfo->attribute_map.end())
+      return true;
+    class_name = classtable->inherits_from(class_name);
+  }
+  return false;
+}
+
 ClassMethodInfo::ClassMethodInfo(Class_ cl) {
   Features class_features = cl->get_features();
   for (int j = class_features->first(); class_features->more(j); j = class_features->next(j)) {
     Feature feat = class_features->nth(j);
-    if (!feat->is_method())
+    if (!feat->is_method()) {
+      Symbol attr_name = feat->get_name();
+      Symbol attr_type = feat->get_type();
+      this->attribute_map[attr_name] = attr_type;
       continue;
+    }
     Symbol method_name = feat->get_name();
 
     MethodInfo *new_method_info = new MethodInfo(feat);
@@ -503,7 +519,7 @@ bool is_subclass (Symbol child_class, Symbol ancestor) {
   }
   if (ancestor == SELF_TYPE) return false;
   if (child_class == SELF_TYPE)
-    child_class = current_class->get_name(); /* TODO: Figure out if this is enough for SELF_TYPE */
+    child_class = current_class->get_name(); 
   Symbol parent = child_class;
   while (true) {
     if (parent == ancestor) {
@@ -520,7 +536,14 @@ bool is_subclass (Symbol child_class, Symbol ancestor) {
  * provided classes. 
  */
 Symbol lub (Symbol class_one, Symbol class_two) {
-  /* TODO: Implement */
+  /* Handle SELF_TYPE cases. */
+  if (class_one == SELF_TYPE && class_two == SELF_TYPE)
+    return SELF_TYPE;
+  if (class_one == SELF_TYPE)
+    return lub(current_class->get_name(), class_two);
+  if (class_two == SELF_TYPE)
+    return lub (class_one, current_class->get_name());
+
   std::set<Symbol> class_one_ancestors;
   Symbol class_one_parent = class_one;
   while (class_one_parent != No_class) {
@@ -536,11 +559,23 @@ Symbol lub (Symbol class_one, Symbol class_two) {
   return No_class;
 }
 
+void add_superclass_attributes_to_scope() {
+  Symbol class_name = classtable->inherits_from(current_class->get_name());
+  while (class_name != No_class) {
+    std::map<Symbol, Symbol> *attributes = mte->get_class_attributes(class_name);
+    for (std::map<Symbol, Symbol>::iterator it = attributes->begin();
+       it != attributes->end(); ++it) {
+      Symbol name = it->first;
+      Symbol type = it->second;
+      st->addid(name,type);
+    }
+    class_name = classtable->inherits_from(class_name);
+  }
+}
+
 
 bool class__class::verify_type()
 {
-  /* TODO: Check for overriden methods. */
-  /* TODO: Check for inherited attributes/methods. */
   cout << "Evaluating class " << name << endl;
   st->enterscope();
   current_class = this;
@@ -554,6 +589,8 @@ bool class__class::verify_type()
     }
   }
 
+  add_superclass_attributes_to_scope();
+
   /* Second, go through and verify methods. */  
   for(int j = features->first(); features->more(j); j = features->next(j)) {
     if (!features->nth(j)->is_method()) continue;
@@ -566,25 +603,64 @@ bool class__class::verify_type()
   return result;
 }
 
+bool verify_proper_method_inheritence(Symbol name, Symbol return_type, Formals formals) {
+  bool result = true;
+
+  Symbol parent_class = classtable->inherits_from(current_class->get_name());
+  Symbol parent_return_type = mte->get_return_type (parent_class, name);
+
+  /* Return true if method is not inherited from superclass. */
+  if (parent_return_type == NULL)
+    return true;
+
+  if (parent_return_type != return_type)
+    result = false;
+
+  for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
+    if (mte->get_nth_argument_type(i, parent_class, name) != formals->nth(i)->get_type())
+      result = false;
+  }
+
+  if (result == false) {
+    classtable->semant_error(current_class) << "Inherited method " << name << "in class "
+          << current_class->get_name() << " does not match prototype defined in parent class "
+          << parent_class << endl;
+  }
+  return result;
+}
+
+
 bool method_class::verify_type()
 {
   cout << "Evaluating method " << name << endl;
+  bool result = true;
+
+  /* Verify that this method does not override incorrectly. */
+  result = verify_proper_method_inheritence(this->name, this->return_type, this->formals);
 
   /* Add self and formal parameters to symbol table. */
   st->enterscope();
-  /* TODO: Add self to symbol table. Don't know how right now. */
+  st->addid(self, SELF_TYPE);
 
   for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
+    if (formals->nth(i)->get_type() == SELF_TYPE) {
+      classtable->semant_error(current_class) << "Method " << this->name << " has improper "
+        << "formal of type SELF_TYPE" << endl;
+      result = false;
+    }
     st->addid(formals->nth(i)->get_name(), formals->nth(i)->get_type());
   }
     
   if (!expr->verify_type()) {
     cout << "Verifying expression type failed." << endl;
+    result = false;
+  }
+
+  if (!result) {
     st->exitscope();
     return false;
   }
-  cout << "In method!! " << this->name << endl;
-  cout << "Checking expr type " << expr->get_type() << endl;
+
   if (!is_subclass(expr->get_type(), return_type)) {
     classtable->semant_error(current_class) << "Method " << name << "'s expression type of " 
       << expr->get_type() << " does not match method's return type of " << return_type << endl;
@@ -592,39 +668,46 @@ bool method_class::verify_type()
     return false;
   }
   st->exitscope();
-  return true;
+  return result;
 }
-
 
 bool attr_class::verify_type()
 {
   cout << "Evaluating attribute " << name << endl;
+  bool result = true;
+
+  /* Ensure no attribute with this name in ancestor classes. */
+  Symbol parent_class = classtable->inherits_from(current_class->get_name());
+  if (mte->has_attribute(parent_class, this->name)) {
+    result = false;
+    classtable->semant_error(current_class) << "Attribute " << name << " in class "
+      << current_class->get_name() << " is previously defined in a parent class." << endl;
+  }
+
   if (!init->verify_type()) return false;
-  if (init->get_type() != type_decl && init->get_type() != No_type) {
+  if (init->get_type() != No_type && !is_subclass(init->get_type(), type_decl)) {
     classtable->semant_error(current_class) << "Attribute initialization of type "
       << init->get_type() << " does not match expected type " << type_decl << endl;
     return false;
   }
   st->addid(name, type_decl);
-  return true;
+  return result;
 }
 
 bool formal_class::verify_type()
 {
-  cout << "Evaluating formal with name " << name << endl;
-  /* TODO: Find out if there is anything to check in here. */
   return true;
 }
 
 bool branch_class::verify_type()
 {
-  /* TODO: Implement. */
   cout << "evaluating branch class" << endl;
   bool result = true;
   st->enterscope();
   st->addid(name, type_decl);
   if (!expr->verify_type()) {
     this->type = Object;
+    st->exitscope();
     return false;
   }
   this->type = expr->get_type();
@@ -643,14 +726,14 @@ bool assign_class::verify_type()
   cout << "evaluating assign statement for variable " << name << endl;
 
   /* Look for object ID in symbol table. */
+  bool result = true;
   Symbol found_type = st->lookup(name);
   if (found_type == NULL) {
     classtable->semant_error(current_class) << "Object identifier " << name <<
       " in assign statement not found in symbol table." << endl;
     this->type = Object;
-    return false;
+    result = false;
   }
-  cout << "Type found for variable " << name << " is " << found_type << endl;
 
   /* Verify that the assignment expression's type is valid and a subclass of return type. */
   if (!expr->verify_type()) {
@@ -662,8 +745,9 @@ bool assign_class::verify_type()
       " with type " << found_type <<
       " does not match type of its assignment " << expr->get_type() << endl;
     this->type = Object;
-    return false;
+    result = false;
   }
+  if (!result) return false;
 
   this->type = found_type;
   return true;
@@ -676,8 +760,6 @@ bool assign_class::verify_type()
 //
 bool static_dispatch_class::verify_type()
 {
-  /* TODO: Update to work for static dispatch. */
-
   cout << "Evaluating static dispatch" << endl;
   bool result = true;
   if (!expr->verify_type()) {
@@ -716,23 +798,21 @@ bool static_dispatch_class::verify_type()
   return result;
 }
 
-//
-//   dispatch_class::dump_with_types is similar to 
-//   static_dispatch_class::dump_with_types 
-//
+
 bool dispatch_class::verify_type()
 {
-  /* TODO: Implement extra dispatch details. */
-
   cout << "Evaluating dispatch class" << endl;
   bool result = true;
   if (!expr->verify_type()) {
     this->type = Object;
     result = false;
   }
+
+  /* If no object expression provided, use current cass. */
   Symbol class_name = expr->get_type();
   if (class_name == No_type)
     class_name = current_class->get_name();
+
   for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
     if (!actual->nth(i)->verify_type()) {
       this->type = Object;
@@ -768,9 +848,14 @@ bool cond_class::verify_type()
   bool result = true;
 
   /* Ensure subexpressions are valid. */
-  if (!pred->verify_type() 
-      || !then_exp->verify_type()
-      || !else_exp->verify_type()) {
+  if (!pred->verify_type())
+    result = false;
+  if (!then_exp->verify_type())
+    result = false;
+  if (!else_exp->verify_type())
+    result = false;
+
+  if (!result) {
     this->type = Object;
     return false;
   }
@@ -804,7 +889,6 @@ bool loop_class::verify_type()
 
 bool typcase_class::verify_type()
 {
-  /* TODO: Add checks for duplicate branches? */
   bool result = true;
   cout << "Evaluating typecase class" << endl;
   if (!expr->verify_type()) {
@@ -813,6 +897,13 @@ bool typcase_class::verify_type()
   }
 
   Symbol return_type = Object;
+
+  /* If no cases, throw semantic error. */
+  if (cases->len() == 0) {
+    classtable->semant_error(current_class) << "Case expression with no "
+      << "branches found" << endl;
+    result = false;
+  }
 
   for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
     /* If improper branch, mark as failure and skip to next branch. */
@@ -855,10 +946,7 @@ bool let_class::verify_type()
   cout << "Evaluating let case" << endl;
   bool result = true;
 
-  /* Handle possible SELF_TYPE in type_decl */
   Symbol declared_type = type_decl;
-  if (declared_type == SELF_TYPE)
-    /* TODO: Set declared_type to SELF_TYPE(C) */
 
   /* Evaluate type of init and ensure it matches type_decl. */  
   if (!init->verify_type()) {
@@ -1041,7 +1129,6 @@ bool eq_class::verify_type()
 
 bool leq_class::verify_type()
 {
-  /* TODO: Implement */
   cout << "Evaluating leq operator" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
@@ -1103,7 +1190,7 @@ bool new__class::verify_type()
 {
   cout << "Evaluating new expression for typename " << type_name << endl;
   if (type_name == SELF_TYPE) {
-    /* TODO: set this->type to SELF_TYPE(C) */
+    this->type = SELF_TYPE;
   } else {
     this->type = type_name;
   }
@@ -1124,7 +1211,6 @@ bool isvoid_class::verify_type()
 
 bool no_expr_class::verify_type()
 {
-  /* TODO: Figure out what to do with no expr class. */
   cout << "Evaluating no_expr" << endl;
   this->type = No_type;
   return true;

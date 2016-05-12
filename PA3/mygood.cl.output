@@ -1,0 +1,121 @@
+WHERE AM I?
+AFTER DUMP
+Evaluating class C
+Evaluating attribute a
+Evaluating no_expr
+Evaluating attribute b
+Evaluating no_expr
+Evaluating method init
+Evaluating block class
+evaluating assign statement for variable a
+Type found for variable a is Int
+Assigning object id x type Int
+is_subclass(Int, Int) is true
+evaluating assign statement for variable b
+Type found for variable b is Bool
+Assigning object id y type Bool
+is_subclass(Bool, Bool) is true
+In method!! init
+Checking expr type SELF_TYPE
+is_subclass(C, C) is true
+Evaluating class Main
+Evaluating method main
+Evaluating dispatch class
+Evaluating new expression for typename C
+Evaluating an INT_CONST
+is_subclass(Int, Int) is true
+Evaluating a BOOL_CONST
+is_subclass(Bool, Bool) is true
+Looking in MTE for class C and method init
+Found return type C for class C, method init
+Set this->type to C
+In method!! main
+Checking expr type C
+is_subclass(C, C) is true
+#1
+_program
+  #1
+  _class
+    C
+    Object
+    "tests/simple-tests/good.cl"
+    (
+    #2
+    _attr
+      a
+      Int
+      #0
+      _no_expr
+      : _no_type
+    #3
+    _attr
+      b
+      Bool
+      #0
+      _no_expr
+      : _no_type
+    #4
+    _method
+      init
+      #4
+      _formal
+        x
+        Int
+      #4
+      _formal
+        y
+        Bool
+      C
+      #5
+      _block
+        #6
+        _assign
+          a
+          #6
+          _object
+            x
+          : Int
+        : Int
+        #7
+        _assign
+          b
+          #7
+          _object
+            y
+          : Bool
+        : Bool
+        #8
+        _object
+          self
+        : SELF_TYPE
+      : SELF_TYPE
+    )
+  #13
+  _class
+    Main
+    Object
+    "tests/simple-tests/good.cl"
+    (
+    #14
+    _method
+      main
+      C
+      #15
+      _dispatch
+        #15
+        _new
+          C
+        : C
+        init
+        (
+        #15
+        _int
+          1
+        : Int
+        #15
+        _bool
+          1
+        : Bool
+        )
+      : C
+    )
