@@ -1026,7 +1026,7 @@ bool plus_class::verify_type()
   }
   if (e1->get_type() != Int || e2->get_type() != Int) {
     classtable->semant_error(current_class->get_filename(), this) << 
-      "Both expressions in a plus operation are not of type Int" << endl;
+      "non-Int arguments: " << e1->get_type() << " + " << e2->get_type() << endl;
     this->type = Object;
     return false;
   }
@@ -1045,7 +1045,7 @@ bool sub_class::verify_type()
   }
   if (e1->get_type() != Int || e2->get_type() != Int) {
     classtable->semant_error(current_class->get_filename(), this) << 
-      "Both expressions in a subtraction operation are not of type Int" << endl;
+      "non-Int arguments: " << e1->get_type() << " - " << e2->get_type() << endl;
     this->type = Object;
     return false;
   }
@@ -1064,7 +1064,7 @@ bool mul_class::verify_type()
   }
   if (e1->get_type() != Int || e2->get_type() != Int) {
     classtable->semant_error(current_class->get_filename(), this) << 
-      "Both expressions in a multiply operation are not of type Int" << endl;
+      "non-Int arguments: " << e1->get_type() << " * " << e2->get_type() << endl;
     this->type = Object;
     return false;
   }
@@ -1083,7 +1083,7 @@ bool divide_class::verify_type()
   }
   if (e1->get_type() != Int || e2->get_type() != Int) {
     classtable->semant_error(current_class->get_filename(), this) << 
-      "Both expressions in a divide operation are not of type Int" << endl;
+      "non-Int arguments: " << e1->get_type() << " / " << e2->get_type() << endl;
     this->type = Object;
     return false;
   }
