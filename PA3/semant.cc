@@ -96,6 +96,13 @@ void ClassTable::add_class(Class_ current_class) {
   Symbol inherits_from = current_class->get_parent();
   
   /* Ensure no class is defined more than once. */
+  if (class_name == SELF_TYPE) {
+    semant_error(current_class) << "A class cannot have name SELF_TYPE" << endl;
+    return;
+  }
+  if (inherits_from == SELF_TYPE) {
+    semant_error(current_class) << "Class " << class_name << " incorrectly inherits from SELF_TYPE" << endl;
+  }
   if (this->inheritance_map[class_name]) {
     semant_error(current_class) << "Class with name " << class_name << " is defined multiple times." << endl;
     return;
@@ -519,7 +526,9 @@ bool is_subclass (Symbol child_class, Symbol ancestor) {
   }
   if (ancestor == SELF_TYPE) return false;
   if (child_class == SELF_TYPE)
-    child_class = current_class->get_name(); 
+    child_class = current_class->get_name();
+  if (child_class == No_type)
+    return true; 
   Symbol parent = child_class;
   while (true) {
     if (parent == ancestor) {
@@ -615,11 +624,14 @@ bool verify_proper_method_inheritence(Symbol name, Symbol return_type, Formals f
 
   if (parent_return_type != return_type)
     result = false;
-
-  for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
+  int i;
+  for(i = formals->first(); formals->more(i); i = formals->next(i)) {
     if (mte->get_nth_argument_type(i, parent_class, name) != formals->nth(i)->get_type())
       result = false;
   }
+  /* Check for too few arguments in overriden method. */
+  if (mte->get_nth_argument_type(i, parent_class, name) != NULL)
+    result = false;
 
   if (result == false) {
     classtable->semant_error(current_class) << "Inherited method " << name << "in class "
@@ -635,6 +647,10 @@ bool method_class::verify_type()
   cout << "Evaluating method " << name << endl;
   bool result = true;
 
+  if (this->name == self) {
+    classtable->semant_error(current_class) << "Method improperly named keyword self" << endl;
+    result = false;
+  }
   /* Verify that this method does not override incorrectly. */
   result = verify_proper_method_inheritence(this->name, this->return_type, this->formals);
 
@@ -648,7 +664,13 @@ bool method_class::verify_type()
         << "formal of type SELF_TYPE" << endl;
       result = false;
     }
-    st->addid(formals->nth(i)->get_name(), formals->nth(i)->get_type());
+    if (formals->nth(i)->get_name() == self) {
+      classtable->semant_error(current_class) << "Method " << this->name << " has improper "
+        << "formal with name self" << endl;
+      result = false;
+    }
+    if (result)
+      st->addid(formals->nth(i)->get_name(), formals->nth(i)->get_type());
   }
     
   if (!expr->verify_type()) {
@@ -676,6 +698,11 @@ bool attr_class::verify_type()
   cout << "Evaluating attribute " << name << endl;
   bool result = true;
 
+  if (this->name == self) {
+    classtable->semant_error(current_class) << "Attribute incorrectly named keyword self" << endl;
+    result = false;
+  }
+
   /* Ensure no attribute with this name in ancestor classes. */
   Symbol parent_class = classtable->inherits_from(current_class->get_name());
   if (mte->has_attribute(parent_class, this->name)) {
@@ -688,9 +715,15 @@ bool attr_class::verify_type()
   if (init->get_type() != No_type && !is_subclass(init->get_type(), type_decl)) {
     classtable->semant_error(current_class) << "Attribute initialization of type "
       << init->get_type() << " does not match expected type " << type_decl << endl;
-    return false;
+    result = false;
   }
-  st->addid(name, type_decl);
+  if (st->lookup(name) != NULL) {
+    classtable->semant_error(current_class) << "Multiple attributes declared with name " << name
+      << " in class " << current_class->get_name() << endl;
+    result = false;
+  }
+  if (result)
+    st->addid(name, type_decl);
   return result;
 }
 
@@ -948,8 +981,16 @@ bool let_class::verify_type()
 
   Symbol declared_type = type_decl;
 
+  if (this->identifier == self) {
+    classtable->semant_error(current_class) << "Object identifier cannot be self" << endl;
+    result = false;
+  }
+
   /* Evaluate type of init and ensure it matches type_decl. */  
-  if (!init->verify_type()) {
+  if (!init->verify_type())
+    result = false;
+
+  if (!result) {
     this->type = Object;
     return false;
   }
