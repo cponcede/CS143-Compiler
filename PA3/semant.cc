@@ -612,7 +612,7 @@ bool class__class::verify_type()
   return result;
 }
 
-bool verify_proper_method_inheritence(Symbol name, Symbol return_type, Formals formals) {
+bool verify_proper_method_inheritence(Symbol name, Symbol return_type, Formals formals, tree_node *t) {
   bool result = true;
 
   Symbol parent_class = classtable->inherits_from(current_class->get_name());
@@ -634,7 +634,7 @@ bool verify_proper_method_inheritence(Symbol name, Symbol return_type, Formals f
     result = false;
 
   if (result == false) {
-    classtable->semant_error(current_class) << "Inherited method " << name << "in class "
+    classtable->semant_error(current_class->get_filename(), t) << "Inherited method " << name << "in class "
           << current_class->get_name() << " does not match prototype defined in parent class "
           << parent_class << endl;
   }
@@ -648,11 +648,11 @@ bool method_class::verify_type()
   bool result = true;
 
   if (this->name == self) {
-    classtable->semant_error(current_class) << "Method improperly named keyword self" << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Method improperly named keyword self" << endl;
     result = false;
   }
   /* Verify that this method does not override incorrectly. */
-  result = verify_proper_method_inheritence(this->name, this->return_type, this->formals);
+  result = verify_proper_method_inheritence(this->name, this->return_type, this->formals, this);
 
   /* Add self and formal parameters to symbol table. */
   st->enterscope();
@@ -660,12 +660,12 @@ bool method_class::verify_type()
 
   for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
     if (formals->nth(i)->get_type() == SELF_TYPE) {
-      classtable->semant_error(current_class) << "Method " << this->name << " has improper "
+      classtable->semant_error(current_class->get_filename(), this) << "Method " << this->name << " has improper "
         << "formal of type SELF_TYPE" << endl;
       result = false;
     }
     if (formals->nth(i)->get_name() == self) {
-      classtable->semant_error(current_class) << "Method " << this->name << " has improper "
+      classtable->semant_error(current_class->get_filename(), this) << "Method " << this->name << " has improper "
         << "formal with name self" << endl;
       result = false;
     }
@@ -684,7 +684,7 @@ bool method_class::verify_type()
   }
 
   if (!is_subclass(expr->get_type(), return_type)) {
-    classtable->semant_error(current_class) << "Method " << name << "'s expression type of " 
+    classtable->semant_error(current_class->get_filename(), this) << "Method " << name << "'s expression type of " 
       << expr->get_type() << " does not match method's return type of " << return_type << endl;
     st->exitscope();
     return false;
@@ -699,7 +699,7 @@ bool attr_class::verify_type()
   bool result = true;
 
   if (this->name == self) {
-    classtable->semant_error(current_class) << "Attribute incorrectly named keyword self" << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Attribute incorrectly named keyword self" << endl;
     result = false;
   }
 
@@ -707,18 +707,18 @@ bool attr_class::verify_type()
   Symbol parent_class = classtable->inherits_from(current_class->get_name());
   if (mte->has_attribute(parent_class, this->name)) {
     result = false;
-    classtable->semant_error(current_class) << "Attribute " << name << " in class "
+    classtable->semant_error(current_class->get_filename(), this) << "Attribute " << name << " in class "
       << current_class->get_name() << " is previously defined in a parent class." << endl;
   }
 
   if (!init->verify_type()) return false;
   if (init->get_type() != No_type && !is_subclass(init->get_type(), type_decl)) {
-    classtable->semant_error(current_class) << "Attribute initialization of type "
+    classtable->semant_error(current_class->get_filename(), this) << "Attribute initialization of type "
       << init->get_type() << " does not match expected type " << type_decl << endl;
     result = false;
   }
   if (st->lookup(name) != NULL) {
-    classtable->semant_error(current_class) << "Multiple attributes declared with name " << name
+    classtable->semant_error(current_class->get_filename(), this) << "Multiple attributes declared with name " << name
       << " in class " << current_class->get_name() << endl;
     result = false;
   }
@@ -762,7 +762,7 @@ bool assign_class::verify_type()
   bool result = true;
   Symbol found_type = st->lookup(name);
   if (found_type == NULL) {
-    classtable->semant_error(current_class) << "Object identifier " << name <<
+    classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << name <<
       " in assign statement not found in symbol table." << endl;
     this->type = Object;
     result = false;
@@ -774,7 +774,7 @@ bool assign_class::verify_type()
     return false;
   }
   if (!is_subclass(expr->get_type(), found_type)) {
-    classtable->semant_error(current_class) << "Object identifier " << name <<
+    classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << name <<
       " with type " << found_type <<
       " does not match type of its assignment " << expr->get_type() << endl;
     this->type = Object;
@@ -804,7 +804,7 @@ bool static_dispatch_class::verify_type()
 
   /* Extra check for expected type in static dispatch. */
   if (!is_subclass(class_name, expected_class_name)) {
-    classtable->semant_error(current_class) << "Type of expression in "
+    classtable->semant_error(current_class->get_filename(), this) << "Type of expression in "
       << "static dispatch statement does not match type " << expected_class_name << endl;
     this->type = Object;
     result = false;
@@ -818,7 +818,7 @@ bool static_dispatch_class::verify_type()
     }
     Symbol expected_arg_type = mte->get_nth_argument_type(i, class_name, this->name);
     if (!is_subclass(actual->nth(i)->get_type(),expected_arg_type)) {
-      classtable->semant_error(current_class) << "Call to function " << this->name
+      classtable->semant_error(current_class->get_filename(), this) << "Call to function " << this->name
         << " in class " << class_name << " does not match prototype." << endl;
       this->type = Object;
       result = false;
@@ -854,7 +854,7 @@ bool dispatch_class::verify_type()
     }
     Symbol expected_arg_type = mte->get_nth_argument_type(i, class_name, this->name);
     if (!is_subclass(actual->nth(i)->get_type(),expected_arg_type)) {
-      classtable->semant_error(current_class) << "Call to function " << this->name
+      classtable->semant_error(current_class->get_filename(), this) << "Call to function " << this->name
         << " in class " << class_name << " does not match prototype." << endl;
       this->type = Object;
       result = false;
@@ -894,7 +894,7 @@ bool cond_class::verify_type()
   }
   /* Ensure predicate is a boolean. */
   if (pred->get_type() != Bool) {
-    classtable->semant_error(current_class) << "Predicate in if-statement not of type Bool" << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Predicate in if-statement not of type Bool" << endl;
     this->type = Object;
     return false;
   }
@@ -905,7 +905,6 @@ bool cond_class::verify_type()
 
 bool loop_class::verify_type()
 {
-  cout << "Evaluating loop class" << endl;
   /* Set type to Object no matter what for loops. */
   this->type = Object;
   if (!pred->verify_type() || !body->verify_type()) {
@@ -913,7 +912,7 @@ bool loop_class::verify_type()
   }
   /* Verify predicate is a boolean. */
   if (pred->get_type() != Bool) {
-    classtable->semant_error(current_class) << "Predicate in loop not of type Bool" << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Predicate in loop not of type Bool" << endl;
     return false;
   }
   return true;
@@ -933,7 +932,7 @@ bool typcase_class::verify_type()
 
   /* If no cases, throw semantic error. */
   if (cases->len() == 0) {
-    classtable->semant_error(current_class) << "Case expression with no "
+    classtable->semant_error(current_class->get_filename(), this) << "Case expression with no "
       << "branches found" << endl;
     result = false;
   }
@@ -958,7 +957,6 @@ bool typcase_class::verify_type()
 //
 bool block_class::verify_type()
 {
-  cout << "Evaluating block class" << endl;
   bool result = true;
 
   /* Set type of block equal to last expression in block. */
@@ -982,7 +980,7 @@ bool let_class::verify_type()
   Symbol declared_type = type_decl;
 
   if (this->identifier == self) {
-    classtable->semant_error(current_class) << "Object identifier cannot be self" << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Object identifier cannot be self" << endl;
     result = false;
   }
 
@@ -996,7 +994,7 @@ bool let_class::verify_type()
   }
   Symbol init_type = init->get_type();
   if (!is_subclass(init_type, declared_type)) {
-      classtable->semant_error(current_class) << "Object identifier " << identifier <<
+      classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << identifier <<
       " in let statement does not match type of its assignment" << endl;
       this->type = Object;
       return false;
@@ -1019,7 +1017,6 @@ bool let_class::verify_type()
 
 bool plus_class::verify_type()
 {
-  cout << "Evaluating plus operation" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
@@ -1028,7 +1025,7 @@ bool plus_class::verify_type()
     return false;
   }
   if (e1->get_type() != Int || e2->get_type() != Int) {
-    classtable->semant_error(current_class) << 
+    classtable->semant_error(current_class->get_filename(), this) << 
       "Both expressions in a plus operation are not of type Int" << endl;
     this->type = Object;
     return false;
@@ -1039,7 +1036,6 @@ bool plus_class::verify_type()
 
 bool sub_class::verify_type()
 {
-  cout << "Evaluating sub operation" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
@@ -1048,7 +1044,7 @@ bool sub_class::verify_type()
     return false;
   }
   if (e1->get_type() != Int || e2->get_type() != Int) {
-    classtable->semant_error(current_class) << 
+    classtable->semant_error(current_class->get_filename(), this) << 
       "Both expressions in a subtraction operation are not of type Int" << endl;
     this->type = Object;
     return false;
@@ -1059,7 +1055,6 @@ bool sub_class::verify_type()
 
 bool mul_class::verify_type()
 {
-  cout << "Evaluating mul operation" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
@@ -1068,7 +1063,7 @@ bool mul_class::verify_type()
     return false;
   }
   if (e1->get_type() != Int || e2->get_type() != Int) {
-    classtable->semant_error(current_class) << 
+    classtable->semant_error(current_class->get_filename(), this) << 
       "Both expressions in a multiply operation are not of type Int" << endl;
     this->type = Object;
     return false;
@@ -1079,7 +1074,6 @@ bool mul_class::verify_type()
 
 bool divide_class::verify_type()
 {
-  cout << "Evaluating divide operation" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
@@ -1088,7 +1082,7 @@ bool divide_class::verify_type()
     return false;
   }
   if (e1->get_type() != Int || e2->get_type() != Int) {
-    classtable->semant_error(current_class) << 
+    classtable->semant_error(current_class->get_filename(), this) << 
       "Both expressions in a divide operation are not of type Int" << endl;
     this->type = Object;
     return false;
@@ -1099,14 +1093,13 @@ bool divide_class::verify_type()
 
 bool neg_class::verify_type()
 {
-  cout << "Evaluating neg class" << endl;
   bool result = true;
   if (!e1->verify_type()) {
     this->type = Object;
     return false;
   }
   if (e1->get_type() != Int) {
-    classtable->semant_error(current_class) << 
+    classtable->semant_error(current_class->get_filename(), this) << 
       "Attempting to negate something other than an Int" << endl;
     this->type = Object;
     return false;
@@ -1117,7 +1110,6 @@ bool neg_class::verify_type()
 
 bool lt_class::verify_type()
 {
-  cout << "Evaluating lt operator" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
@@ -1127,7 +1119,7 @@ bool lt_class::verify_type()
   }
   if (e1->get_type() != Int or e2->get_type() != Int) {
     this->type = Object;
-    classtable->semant_error(current_class) << 
+    classtable->semant_error(current_class->get_filename(), this) << 
       "Attempting to compare something other than an Int" << endl;
     return false;
   }
@@ -1138,7 +1130,6 @@ bool lt_class::verify_type()
 
 bool eq_class::verify_type()
 {
-  cout << "Evaluating eq class" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
@@ -1158,7 +1149,7 @@ bool eq_class::verify_type()
   if (type_check_required) {
     if (e1->get_type() != e2->get_type()) {
       this->type = Object;
-      classtable->semant_error(current_class) << 
+      classtable->semant_error(current_class->get_filename(), this) << 
         "Attempting to compare using == mismatching basic types (Int, Bool, or String)" << endl;
       return false;
     }
@@ -1170,7 +1161,6 @@ bool eq_class::verify_type()
 
 bool leq_class::verify_type()
 {
-  cout << "Evaluating leq operator" << endl;
   bool result = true;
   if (!e1->verify_type()) result = false;
   if (!e2->verify_type()) result = false;
@@ -1180,7 +1170,7 @@ bool leq_class::verify_type()
   }
   if (e1->get_type() != Int or e2->get_type() != Int) {
     this->type = Object;
-    classtable->semant_error(current_class) << 
+    classtable->semant_error(current_class->get_filename(), this) << 
       "Attempting to compare something other than an Int" << endl;
     return false;
   }
@@ -1190,14 +1180,13 @@ bool leq_class::verify_type()
 
 bool comp_class::verify_type()
 {
-  cout << "Evaluating comp class" << endl;
   bool result = true;
   if (!e1->verify_type()) {
     this->type = Object;
     return false;
   }
   if (e1->get_type() != Bool) {
-    classtable->semant_error(current_class) << 
+    classtable->semant_error(current_class->get_filename(), this) << 
       "Attempting to NOT something other than a Bool" << endl;
     this->type = Object;
     return false;
@@ -1208,28 +1197,24 @@ bool comp_class::verify_type()
 
 bool int_const_class::verify_type()
 {
-  cout << "Evaluating an INT_CONST" << endl;
   this->type = Int;
   return true;
 }
 
 bool bool_const_class::verify_type()
 {
-  cout << "Evaluating a BOOL_CONST" << endl;
   this->type = Bool;
   return true;
 }
 
 bool string_const_class::verify_type()
 {
-  cout << "Evaluating a STR_CONST" << endl;
   this->type = Str;
   return true;
 }
 
 bool new__class::verify_type()
 {
-  cout << "Evaluating new expression for typename " << type_name << endl;
   if (type_name == SELF_TYPE) {
     this->type = SELF_TYPE;
   } else {
@@ -1240,7 +1225,6 @@ bool new__class::verify_type()
 
 bool isvoid_class::verify_type()
 {
-  cout << "Evaluating isvoid class" << endl;
   bool result = true;
   if (!e1->verify_type()) {
     this->type = Object;
@@ -1252,7 +1236,6 @@ bool isvoid_class::verify_type()
 
 bool no_expr_class::verify_type()
 {
-  cout << "Evaluating no_expr" << endl;
   this->type = No_type;
   return true;
 }
@@ -1267,11 +1250,10 @@ bool object_class::verify_type()
   /* Look up variable in symbol table. */
   Symbol found_type = st->lookup(this->name);
   if (found_type == NULL) {
-    classtable->semant_error(current_class) << "Object identifier " << name <<
+    classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << name <<
       " not found in symbol table." << endl;
     return false;
   }
-  cout << "Assigning object id " << name << " type " << found_type << endl;
   this->type = found_type;  
   return true;
 }
