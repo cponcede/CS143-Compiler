@@ -97,7 +97,7 @@ void ClassTable::add_class(Class_ current_class) {
   
   /* Ensure no class is defined more than once. */
   if (class_name == SELF_TYPE) {
-    semant_error(current_class) << "A class cannot have name SELF_TYPE." << endl;
+    semant_error(current_class) << "Redefinition of basic class " << class_name << "." << endl;
     return;
   }
   if (inherits_from == SELF_TYPE) {
@@ -108,7 +108,7 @@ void ClassTable::add_class(Class_ current_class) {
     return;
   }
   /* Ensure no class attempts to inherit from basic classes other than Object. */
-  if (inherits_from == Bool || inherits_from == Int || inherits_from == Str) {
+  if (inherits_from == Bool || inherits_from == Int || inherits_from == Str || inherits_from == IO) {
     semant_error(current_class) << "Class " << class_name << " cannot inherit class "
       << inherits_from << "." << endl;
     return;
@@ -561,6 +561,8 @@ bool is_subclass (Symbol child_class, Symbol ancestor) {
     cerr << "Null class passed into is_subclass." << endl;
     return false;
   }
+  if (child_class == SELF_TYPE && ancestor == SELF_TYPE)
+    return true;
   if (ancestor == SELF_TYPE) return false;
   if (child_class == SELF_TYPE)
     child_class = current_class->get_name();
@@ -624,6 +626,9 @@ bool class__class::verify_type()
   st->enterscope();
   current_class = this;
   bool result = true;
+  if (this->name == Int || this->name == Bool || this->name == Str || this->name == IO)
+    classtable->semant_error(current_class->get_filename(), this) <<
+      "Redefinition of basic class " << this->name << "." << endl;
   /* First, go through attributes to verify and add to symbol table. */
   for(int i = features->first(); features->more(i); i = features->next(i)) {
     if (!features->nth(i)->is_method()) {
@@ -698,8 +703,8 @@ bool method_class::verify_type()
 
   for(int i = formals->first(); formals->more(i); i = formals->next(i)) {
     if (formals->nth(i)->get_type() == SELF_TYPE) {
-      classtable->semant_error(current_class->get_filename(), this) << "Method " << this->name << " has improper "
-        << "formal of type SELF_TYPE" << endl;
+      classtable->semant_error(current_class->get_filename(), this) << "Formal parameter " <<
+        formals->nth(i)->get_name() << " cannot have type SELF_TYPE." << endl;
       result = false;
     }
     if (formals->nth(i)->get_name() == self) {
