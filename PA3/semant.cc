@@ -564,8 +564,10 @@ bool is_subclass (Symbol child_class, Symbol ancestor) {
   if (child_class == SELF_TYPE && ancestor == SELF_TYPE)
     return true;
   if (ancestor == SELF_TYPE) return false;
-  if (child_class == SELF_TYPE)
+  if (child_class == SELF_TYPE) {
     child_class = current_class->get_name();
+    cout << "child_class was SELF_TYPE but now setting as " << child_class << endl;
+  }
   if (child_class == No_type)
     return true; 
   Symbol parent = child_class;
@@ -911,6 +913,8 @@ bool dispatch_class::verify_type()
 
   if (result) {
     Symbol return_type = mte->get_return_type(class_name, this->name);
+    if (return_type == SELF_TYPE)
+      return_type = class_name;
     this->type = return_type;
   }
 
