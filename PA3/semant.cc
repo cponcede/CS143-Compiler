@@ -181,11 +181,11 @@ bool ClassTable::all_defined() {
   return all_defined;
 }
 
-bool ClassTable::main_class_defined() {
+bool ClassTable::class_defined(Symbol target) {
   bool result = false;
   for (std::map<Symbol, Symbol>::iterator it = this->inheritance_map.begin();
        it != this->inheritance_map.end(); ++it) {
-    if (it->first == Main)
+    if (it->first == target)
       result = true;
   }
   return result;
@@ -849,15 +849,25 @@ bool static_dispatch_class::verify_type()
 {
   bool result = true;
   if (!expr->verify_type()) {
-    expr->type = Object;
     this->type = Object;
     result = false;
   }
-  Symbol class_name = expr->get_type();
-  if (class_name == SELF_TYPE)
-    class_name = current_class->get_name();
-  Symbol expected_class_name = this->type_name;
 
+  /* If no object expression provided, use current cass. */
+  Symbol class_name = expr->get_type();
+
+  if (class_name == No_type) {
+    class_name = SELF_TYPE;
+  }
+
+  if (class_name != SELF_TYPE && !classtable->class_defined(class_name)) {
+    classtable->semant_error(current_class->get_filename(), this) <<
+      "Dispatch on undefined class " << class_name << "." << endl;
+    this->type = Object;
+    return false;
+  }
+
+  Symbol expected_class_name = this->type_name;
   /* Extra check for expected type in static dispatch. */
   if (!is_subclass(class_name, expected_class_name)) {
     classtable->semant_error(current_class->get_filename(), this) << "Type of expression in "
@@ -866,24 +876,36 @@ bool static_dispatch_class::verify_type()
     result = false;
   }
 
+  Symbol class_to_search = class_name;
+  if (class_name == SELF_TYPE)
+    class_to_search = current_class->get_name();
+
   for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
     if (!actual->nth(i)->verify_type()) {
+      actual->nth(i)->type = Object;
       this->type = Object;
       result = false;
-      continue;
     }
-    Symbol expected_arg_type = mte->get_nth_argument_type(i, class_name, this->name);
+
+    Symbol expected_arg_type = mte->get_nth_argument_type(i, class_to_search, this->name);
+    Symbol expected_arg_name = mte->get_nth_argument_name(i, class_to_search, this->name);
     if (!is_subclass(actual->nth(i)->get_type(),expected_arg_type)) {
-      classtable->semant_error(current_class->get_filename(), this) << "Call to function " << this->name
-        << " in class " << class_name << " does not match prototype." << endl;
+      classtable->semant_error(current_class->get_filename(), this) << "In call of method "
+        << this->name << ", type " << actual->nth(i)->get_type() << " of parameter "
+        << expected_arg_name << " does not conform to declared type "
+        << expected_arg_type << "." << endl;
       this->type = Object;
       result = false;
     }
   }
 
-  if (result == true)
-    this->type = mte->get_return_type(class_name, this->name);
-
+  if (result) {
+    Symbol return_type = mte->get_return_type(class_to_search, this->name);
+    if (return_type == SELF_TYPE) {
+      return_type = expr->get_type();
+    }
+    this->type = return_type;
+  }
   return result;
 }
 
@@ -901,6 +923,13 @@ bool dispatch_class::verify_type()
 
   if (class_name == No_type) {
     class_name = SELF_TYPE;
+  }
+
+  if (class_name != SELF_TYPE && !classtable->class_defined(class_name)) {
+    classtable->semant_error(current_class->get_filename(), this) <<
+      "Dispatch on undefined class " << class_name << "." << endl;
+    this->type = Object;
+    return false;
   }
 
   Symbol class_to_search = class_name;
@@ -1056,6 +1085,12 @@ bool let_class::verify_type()
   bool result = true;
 
   Symbol declared_type = type_decl;
+  if (type_decl != SELF_TYPE && !classtable->class_defined(type_decl)) {
+    classtable->semant_error(current_class->get_filename(), this) << "Class " << type_decl <<
+      " of let-bound identifier " << this->identifier << " is undefined." << endl;
+    this->type = Object;
+    result = false;
+  }
 
   if (this->identifier == self) {
     classtable->semant_error(current_class->get_filename(), this) << "Object identifier cannot be self" << endl;
@@ -1070,18 +1105,16 @@ bool let_class::verify_type()
 
   Symbol init_type = init->get_type();
   if (!is_subclass(init_type, declared_type)) {
-      classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << identifier <<
-      " in let statement does not match type of its assignment" << endl;
+      classtable->semant_error(current_class->get_filename(), this) << "Inferred type " <<
+        init_type << " of initialization of " << identifier << " does not conform to " <<
+        "identifier\'s declared type " << declared_type << "." << endl;
       this->type = Object;
-      return false;
+      result = false;
   }
 
   /* Evaluate body using new object. */
   st->enterscope();
-  if (!result)
-    st->addid(identifier, Object);
-  else
-    st->addid(identifier, type_decl);
+  st->addid(identifier, type_decl);
 
   if (!body->verify_type()) {
     this->type = Object;
@@ -1294,6 +1327,10 @@ bool string_const_class::verify_type()
 
 bool new__class::verify_type()
 {
+  if (type_name != SELF_TYPE && !classtable->class_defined(type_name)) {
+    classtable->semant_error(current_class->get_filename(), this) << "\'new\' used "
+      << "with undefined class " << type_name << "." << endl;
+  }
   if (type_name == SELF_TYPE) {
     this->type = SELF_TYPE;
   } else {
@@ -1374,7 +1411,7 @@ void program_class::semant()
   mte = new MethodTypeEnvironment (classes);
   //mte->dump_type_environment();
   st = new SymbolTable<Symbol, Entry>();
-  if (!classtable->main_class_defined())
+  if (!classtable->class_defined(Main))
     classtable->semant_error() << "Class Main is not defined." << endl;
   verify_types(classes);
   exit_gracefully_if_errors(classtable);
