@@ -636,6 +636,9 @@ bool class__class::verify_type()
   if (this->name == Int || this->name == Bool || this->name == Str || this->name == IO)
     classtable->semant_error(current_class->get_filename(), this) <<
       "Redefinition of basic class " << this->name << "." << endl;
+
+  add_superclass_attributes_to_scope();
+
   /* First, go through attributes to verify and add to symbol table. */
   for(int i = features->first(); features->more(i); i = features->next(i)) {
     if (!features->nth(i)->is_method()) {
@@ -645,8 +648,6 @@ bool class__class::verify_type()
 
     }
   }
-
-  add_superclass_attributes_to_scope();
 
   /* Second, go through and verify methods. */  
   for(int j = features->first(); features->more(j); j = features->next(j)) {
