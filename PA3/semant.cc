@@ -724,7 +724,6 @@ bool method_class::verify_type()
     if (result)
       st->addid(formals->nth(i)->get_name(), formals->nth(i)->get_type());
   }
-    
   if (!expr->verify_type()) {
     expr->type = Object;
     result = false;
@@ -764,8 +763,9 @@ bool attr_class::verify_type()
 
   if (!init->verify_type()) return false;
   if (init->get_type() != No_type && !is_subclass(init->get_type(), type_decl)) {
-    classtable->semant_error(current_class->get_filename(), this) << "Attribute initialization of type "
-      << init->get_type() << " does not match expected type " << type_decl << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Inferred type " <<
+      init->get_type() << " of initialization of attribute " << this->name <<
+      " does not conform to declared type " << type_decl << "." << endl;
     result = false;
   }
   if (st->lookup(name) != NULL) {
@@ -773,8 +773,7 @@ bool attr_class::verify_type()
       << " in class " << current_class->get_name() << endl;
     result = false;
   }
-  if (result)
-    st->addid(name, type_decl);
+  st->addid(name, type_decl);
   return result;
 }
 
@@ -932,16 +931,24 @@ bool dispatch_class::verify_type()
     this->type = Object;
     return false;
   }
-
   Symbol class_to_search = class_name;
   if (class_name == SELF_TYPE)
     class_to_search = current_class->get_name();
+
+  if (mte->get_return_type(class_to_search, this->name) == NULL) {
+    classtable->semant_error(current_class->get_filename(), this) <<
+      "Dispatch to undefined method " << this->name << "." << endl;
+    this->type = Object;
+    return false;
+  }
+
 
   for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
     if (!actual->nth(i)->verify_type()) {
       actual->nth(i)->type = Object;
       this->type = Object;
       result = false;
+      continue;
     }
 
     Symbol expected_arg_type = mte->get_nth_argument_type(i, class_to_search, this->name);
@@ -1094,7 +1101,8 @@ bool let_class::verify_type()
   }
 
   if (this->identifier == self) {
-    classtable->semant_error(current_class->get_filename(), this) << "Object identifier cannot be self" << endl;
+    classtable->semant_error(current_class->get_filename(), this) <<
+      "\'self\' cannot be bound in a \'let\' expression." << endl;
     result = false;
   }
 
