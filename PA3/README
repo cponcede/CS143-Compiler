@@ -176,3 +176,66 @@ Instructions
 
 Write-up for PA3
 ----------------
+
+1. Explain how you build the class graph and check that it’s well-formed.
+
+TODO: Jake
+
+
+2. Explain how you handled opening and closing variable scopes.
+
+
+In order to handle variable scopes, a static SymbolTable<Symbol,Entry> 
+is kept as a global variable in semant.cc. According to the PA3 handout,
+a new object identifier can only be introduced in one of four locations:
+
+	a. Attribute definitions
+	b. Formal parameters
+	c. Let expressions
+	d. Branches of case statements
+
+Thus, we call st->enterscope() once when we encounter any of the above
+scenarios while type checking. After entering a new scope, any new object
+identifiers are added to the symbol table with their appropriate types.
+Thus, in the object_class rule, when a lone object identifier needs to be
+typed, the symbol table is guaranteed to have the declared type of that
+variable, if the variable has actually been defined. We call
+st->exitscope() when we have finished type checking the particular statement
+that led to the introduction of the new variable (one of the four cases
+above).
+
+
+3. Explain how you implemented the typing rules from the COOL Manual.
+
+
+Type checking is performed through a recursive search of the AST. At each
+node, there is a verify_type() method that assigns the proper type of that
+expression to the node's type field, or the type of Object if there was a
+semantic error while verifying that rule. The rules themselves are taken
+directly from the COOL manual. Our Object environment is implemented using
+the SymbolTable that maps from variable names to declared types. The method
+type environment, which is used to verify that dispatch calls are correct,
+is created in an earlier pass of the AST and stored in a global static
+MethodTypeEnvironment object. This object can be used to determine the
+declared prototype of all methods and the attributes contained within all
+classes. These two pieces of information, combined with the current_class
+global variable that keeps track of what class is being type checked, are
+all of the information required to completely implement each rule.
+
+MethodTypeEnvironment is composed of a std::map that maps from a
+Symbol class_name to a ClassMethodInfo object that contains information
+about all attributes and methods in that class. ClassMethodInfo stores
+this information in an attribute_map, which maps from attribute names
+to attribute types, and a method_map, which maps from method names to
+a MethodInfo object, which stores information about return types and
+parameter types for a particular method.
+
+Using this information, a particular expression can be assigned a type
+by first recursively calling sub_expr->verify_type() on its subexpressions and
+then using sub_expr->get_type() to ensure that the current rule is satisfied.
+
+
+4. Explain your testing strategy.
+
+
+TODO: Jake
