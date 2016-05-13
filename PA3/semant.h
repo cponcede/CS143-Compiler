@@ -39,7 +39,7 @@ public:
   int errors() { return semant_errors; }
   bool has_cycles();
   bool all_defined();
-  bool main_class_defined();
+  bool class_defined(Symbol target);
   
   ostream& semant_error();
   ostream& semant_error(Class_ c);
