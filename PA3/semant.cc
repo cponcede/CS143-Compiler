@@ -87,6 +87,7 @@ static SymbolTable<Symbol, Entry> *st;
 static ClassTable *classtable;
 Class_ current_class;
 
+
 /*
  * Adds a class to the current ClassTable with the name class_name and
  * the ancestor inherits_from. Returns whether or not it was successful.
@@ -566,7 +567,6 @@ bool is_subclass (Symbol child_class, Symbol ancestor) {
   if (ancestor == SELF_TYPE) return false;
   if (child_class == SELF_TYPE) {
     child_class = current_class->get_name();
-    cout << "child_class was SELF_TYPE but now setting as " << child_class << endl;
   }
   if (child_class == No_type)
     return true; 
@@ -585,6 +585,11 @@ bool is_subclass (Symbol child_class, Symbol ancestor) {
  * provided classes. 
  */
 Symbol lub (Symbol class_one, Symbol class_two) {
+
+  if (class_one == NULL || class_two == NULL) {
+    cerr << "Null class passed into lub." << endl;
+    return NULL;
+  }
   /* Handle SELF_TYPE cases. */
   if (class_one == SELF_TYPE && class_two == SELF_TYPE)
     return SELF_TYPE;
@@ -634,8 +639,9 @@ bool class__class::verify_type()
   /* First, go through attributes to verify and add to symbol table. */
   for(int i = features->first(); features->more(i); i = features->next(i)) {
     if (!features->nth(i)->is_method()) {
-      if (!features->nth(i)->verify_type())
+      if (!features->nth(i)->verify_type()) {
         result = false;
+      }
 
     }
   }
@@ -719,6 +725,7 @@ bool method_class::verify_type()
   }
     
   if (!expr->verify_type()) {
+    expr->type = Object;
     result = false;
   }
 
@@ -781,13 +788,15 @@ bool branch_class::verify_type()
   st->enterscope();
   st->addid(name, type_decl);
   if (!expr->verify_type()) {
+    expr->type = Object;
     this->type = Object;
     st->exitscope();
     return false;
   }
+
   this->type = expr->get_type();
   st->exitscope();
-  return true;
+  return result;
 }
 
 //
@@ -811,6 +820,7 @@ bool assign_class::verify_type()
 
   /* Verify that the assignment expression's type is valid and a subclass of return type. */
   if (!expr->verify_type()) {
+    expr->type = Object;
     this->type = Object;
     return false;
   }
@@ -823,8 +833,8 @@ bool assign_class::verify_type()
     this->type = Object;
     result = false;
   }
-  if (!result) return false;
 
+  if (!result) return false;
   this->type = found_type;
   return true;
 }
@@ -838,6 +848,7 @@ bool static_dispatch_class::verify_type()
 {
   bool result = true;
   if (!expr->verify_type()) {
+    expr->type = Object;
     this->type = Object;
     result = false;
   }
@@ -887,11 +898,13 @@ bool dispatch_class::verify_type()
   /* If no object expression provided, use current cass. */
   Symbol class_name = expr->get_type();
 
-  if (class_name == No_type)
-    class_name = current_class->get_name();
+  if (class_name == No_type) {
+    class_name = SELF_TYPE;
+  }
 
+  Symbol class_to_search = class_name;
   if (class_name == SELF_TYPE)
-    class_name = current_class->get_name();
+    class_to_search = current_class->get_name();
 
   for(int i = actual->first(); actual->more(i); i = actual->next(i)) {
     if (!actual->nth(i)->verify_type()) {
@@ -899,8 +912,9 @@ bool dispatch_class::verify_type()
       this->type = Object;
       result = false;
     }
-    Symbol expected_arg_type = mte->get_nth_argument_type(i, class_name, this->name);
-    Symbol expected_arg_name = mte->get_nth_argument_name(i, class_name, this->name);
+
+    Symbol expected_arg_type = mte->get_nth_argument_type(i, class_to_search, this->name);
+    Symbol expected_arg_name = mte->get_nth_argument_name(i, class_to_search, this->name);
     if (!is_subclass(actual->nth(i)->get_type(),expected_arg_type)) {
       classtable->semant_error(current_class->get_filename(), this) << "In call of method "
         << this->name << ", type " << actual->nth(i)->get_type() << " of parameter "
@@ -912,12 +926,12 @@ bool dispatch_class::verify_type()
   }
 
   if (result) {
-    Symbol return_type = mte->get_return_type(class_name, this->name);
-    if (return_type == SELF_TYPE)
-      return_type = class_name;
+    Symbol return_type = mte->get_return_type(class_to_search, this->name);
+    if (return_type == SELF_TYPE) {
+      return_type = expr->get_type();
+    }
     this->type = return_type;
   }
-
   return result;
 }
 
@@ -930,13 +944,18 @@ bool cond_class::verify_type()
   bool result = true;
 
   /* Ensure subexpressions are valid. */
-  if (!pred->verify_type())
+  if (!pred->verify_type()) {
     result = false;
-  if (!then_exp->verify_type())
+    pred->type = Object;
+  }
+  if (!then_exp->verify_type()) {
+    pred->type = Object;
     result = false;
-  if (!else_exp->verify_type())
+  }
+  if (!else_exp->verify_type()) {
     result = false;
-
+    pred->type = Object;
+  }
   if (!result) {
     this->type = Object;
     return false;
@@ -973,10 +992,11 @@ bool typcase_class::verify_type()
   bool result = true;
   if (!expr->verify_type()) {
     this->type = Object;
-    return false;
+    result = false;
+    expr->type = Object;
   }
 
-  Symbol return_type = Object;
+  Symbol return_type;
 
   /* If no cases, throw semantic error. */
   if (cases->len() == 0) {
@@ -988,11 +1008,15 @@ bool typcase_class::verify_type()
   for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
     /* If improper branch, mark as failure and skip to next branch. */
     if (!cases->nth(i)->verify_type()) {
+      cases->nth(i)->type = Object;
       result = false;
       continue;
     }
-    /* Return type is lub(evaluted types of all n branches) */
-    return_type = lub(return_type, cases->nth(i)->get_type());
+
+    if (i == 0)
+      return_type = cases->nth(i)->get_type();
+    else
+      return_type = lub(return_type, cases->nth(i)->get_type());
   }
   this->type = return_type;
   return result;
@@ -1008,9 +1032,15 @@ bool block_class::verify_type()
   bool result = true;
 
   /* Set type of block equal to last expression in block. */
+  if (body->len() == 0) {
+    this->type = Object;
+    return true;
+  }
   for (int i = body->first(); body->more(i); i = body->next(i)) {
-    if (!body->nth(i)->verify_type()) 
+    if (!body->nth(i)->verify_type()) {
       result = false;
+      body->nth(i)->type = Object;
+    }
     this->type = body->nth(i)->get_type();
   }
   if (result == false) {
@@ -1032,13 +1062,11 @@ bool let_class::verify_type()
   }
 
   /* Evaluate type of init and ensure it matches type_decl. */  
-  if (!init->verify_type())
+  if (!init->verify_type()) {
+    init->type = Object;
     result = false;
-
-  if (!result) {
-    this->type = Object;
-    return false;
   }
+
   Symbol init_type = init->get_type();
   if (!is_subclass(init_type, declared_type)) {
       classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << identifier <<
@@ -1049,7 +1077,10 @@ bool let_class::verify_type()
 
   /* Evaluate body using new object. */
   st->enterscope();
-  st->addid(identifier, type_decl);
+  if (!result)
+    st->addid(identifier, Object);
+  else
+    st->addid(identifier, type_decl);
 
   if (!body->verify_type()) {
     this->type = Object;
