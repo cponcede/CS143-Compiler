@@ -1101,7 +1101,8 @@ bool let_class::verify_type()
   }
 
   if (this->identifier == self) {
-    classtable->semant_error(current_class->get_filename(), this) << "Object identifier cannot be self" << endl;
+    classtable->semant_error(current_class->get_filename(), this) <<
+      "\'self\' cannot be bound in a \'let\' expression." << endl;
     result = false;
   }
 
