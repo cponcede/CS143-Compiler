@@ -826,6 +826,7 @@ bool assign_class::verify_type()
   }
   if (!result)
     return false;
+
   if (!is_subclass(expr->get_type(), found_type)) {
     classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << name <<
       " with type " << found_type <<
@@ -835,7 +836,7 @@ bool assign_class::verify_type()
   }
 
   if (!result) return false;
-  this->type = found_type;
+  this->type = expr->get_type();
   return true;
 }
 
