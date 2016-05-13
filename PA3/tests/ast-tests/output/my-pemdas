@@ -1,0 +1,22 @@
+WHERE AM I?
+AFTER DUMP
+Evaluating class C
+Evaluating attribute a
+Evaluating no_expr
+Evaluating attribute b
+Evaluating no_expr
+Evaluating method pemdas_fun
+Evaluating block class
+evaluating assign statement for variable c
+Evaluating plus operation
+Evaluating a STR_CONST
+Evaluating an INT_CONST
+evaluating assign statement for variable c
+Evaluating plus operation
+Evaluating an INT_CONST
+Evaluating a BOOL_CONST
+evaluating assign statement for variable c
+Evaluating plus operation
+Evaluating an INT_CONST
+Evaluating an INT_CONST
+Segmentation fault (core dumped)

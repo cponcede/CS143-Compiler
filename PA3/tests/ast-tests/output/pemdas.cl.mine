@@ -1,0 +1,41 @@
+WHERE AM I?
+AFTER DUMP
+Evaluating class C
+Evaluating attribute a
+Evaluating attribute b
+Evaluating method pemdas_fun
+Evaluating let case
+evaluating assign statement for variable c
+evaluating assign statement for variable c
+evaluating assign statement for variable c
+is_subclass(Int, Int) is true
+evaluating assign statement for variable c
+evaluating assign statement for variable c
+evaluating assign statement for variable c
+is_subclass(Int, Int) is true
+evaluating assign statement for variable c
+evaluating assign statement for variable c
+evaluating assign statement for variable c
+is_subclass(Int, Int) is true
+evaluating assign statement for variable c
+evaluating assign statement for variable c
+evaluating assign statement for variable c
+is_subclass(Int, Int) is true
+evaluating assign statement for variable c
+is_subclass(Int, Int) is true
+Verifying expression type failed.
+Evaluating method init
+evaluating assign statement for variable a
+is_subclass(Int, Int) is true
+evaluating assign statement for variable b
+is_subclass(Bool, Bool) is true
+is_subclass(C, C) is true
+Evaluating class Main
+Evaluating method main
+Evaluating dispatch class
+is_subclass(Int, Int) is true
+is_subclass(Bool, Bool) is true
+Looking in MTE for class C and method init
+Found return type C for class C, method init
+Set this->type to C
+is_subclass(C, C) is true
