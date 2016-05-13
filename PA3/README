@@ -179,7 +179,22 @@ Write-up for PA3
 
 1. Explain how you build the class graph and check that it’s well-formed.
 
-TODO: Jake
+The implementation of our class graph was fairly simple. We used the Classtable
+class provided to us to implement this. In our Classtable, we stored a map whose
+keys' represented the different classes created in our program, and whose
+values' represented the classes they inherit from. To make this map, we took a
+single pass through all classes in our program, and added them and their super
+class to the map.
+
+Once our map was formed, we could check the form of our inheritance graph. For
+every key in our map, we created a set of visited classes and started to iterate
+to its parent class over and over until we got to No_class (since Object is the
+highest class, and Object inherits from No_class). On every iteration in this
+second loop, we made sure that the new current class actually existed in our map
+(so that we never inherit from a non existant class). We also checked if every
+new current class was in our visited nodes, and if it wasn't, we inserted it. If
+we found the current class in our visited nodes set, then we knew we hit a
+cycle, since we should never see the same class twice in an inheritence tree
 
 
 2. Explain how you handled opening and closing variable scopes.
@@ -237,5 +252,28 @@ then using sub_expr->get_type() to ensure that the current rule is satisfied.
 
 4. Explain your testing strategy.
 
+Before explaining testing strategy, we have to explain our development process.
+We wrote our compiler in three phases: inheritance graph, method type
+environment, and scoping/type checking. Each step takes one pass through the
+program. All tests, and materials useful for testing, live in the tests folder
+that we have included in our submission.
 
-TODO: Jake
+Our inheritance graph tests live in tests/inheritance-graph-tests. Looking
+through our included tests, you can see that we had a single file to test a
+basic class inheritance graph, then multiple files for ill-formed output like
+cycles, double class definitions, and undefined classes.
+
+Much of our method type environment testing is no longer in the code base, since
+it was superfluous code written in semant.cc, and it is tested inherently in our
+type checking. We wrote a dump_type_environment method with many print
+statements to ensure that our type environment was robust and well formed.
+
+The meat of our testing comes in our scoping and type checking. To check well
+formed output, we ran our semantic analyzer on every single test file in
+/usr/class/cs143/examples/ . A couple of these files did have poorly formed
+input (which did help us text), but we mostly used these files to make sure our
+semantic analyzer ran smoothly on well formed input. All of our poorly formed
+tests live in tests/ast-tests. These include topics ranging from self-type tests
+to simple expression tests. Here, we found many possible compiler errors and
+made sure to let our semantic analyzer report and handle all the errors we could
+produce.
