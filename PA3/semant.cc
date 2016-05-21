@@ -700,8 +700,7 @@ bool method_class::verify_type()
   bool result = true;
 
   if (this->name == self) {
-    classtable->semant_error(current_class->get_filename(), this) <<
-      "\'self\' cannot be the name of a method." << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Method improperly named keyword self" << endl;
     result = false;
   }
   /* Verify that this method does not override incorrectly. */
@@ -718,8 +717,8 @@ bool method_class::verify_type()
       result = false;
     }
     if (formals->nth(i)->get_name() == self) {
-      classtable->semant_error(current_class->get_filename(), this) <<
-        "\'self\' cannot be the name of a formal parameter." << endl;
+      classtable->semant_error(current_class->get_filename(), this) << "Method " << this->name << " has improper "
+        << "formal with name self" << endl;
       result = false;
     }
     if (result)
@@ -750,7 +749,7 @@ bool attr_class::verify_type()
   bool result = true;
 
   if (this->name == self) {
-    classtable->semant_error(current_class->get_filename(), this) << "\'self\' cannot be the name of attribute." << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Attribute incorrectly named keyword self" << endl;
     result = false;
   }
 
