@@ -24,3 +24,8 @@ class C {
 	help : Int <- 5;
 	me : Int <- 4;
 };
+
+class D inherits B {
+	f : Int;
+	an_object : C;
+};

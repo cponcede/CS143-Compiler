@@ -625,9 +625,11 @@ void CgenClassTable::code_constants()
 
 CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
 {
-   stringclasstag = 4 /* Change to your String class tag here */;
-   intclasstag =    3 /* Change to your Int class tag here */;
-   boolclasstag =   2 /* Change to your Bool class tag here */;
+   stringclasstag = STRCLASSTAG;
+   intclasstag =    INTCLASSTAG;
+   boolclasstag =   BOOLCLASSTAG;
+
+   nextClassTagToGive = 0;
 
    enterscope();
    if (cgen_debug) cout << "Building CgenClassTable" << endl;
@@ -821,8 +823,8 @@ void CgenNode::set_parentnd(CgenNodeP p)
   parentnd = p;
 }
 
-void first_pass_child (){
-  return;
+int CgenClassTable::giveClassTag() {
+  return nextClassTagToGive++;
 }
 
 void CgenClassTable::code()
@@ -839,10 +841,12 @@ void CgenClassTable::code()
   if (cgen_debug) cout << "coding prototype objects" << endl;
 
   CgenNodeP root_node = root();
+  first_pass(root_node, cout);
+
+  /*
   std::queue<CgenNodeP> node_queue;
   node_queue.push(root_node);
 
-  /* TODO: Change size of this. */
   while (node_queue.size() != 0) {
     CgenNodeP current = node_queue.front();
     emit_protobj_ref (current->name, str);
@@ -851,28 +855,9 @@ void CgenClassTable::code()
       node_queue.push(child->hd());
 
     node_queue.pop();
+
+
   }
-
-  /*
-  TODO: Recursive pass one, what goes on here:
-
-  HOW DO I class_nameTab
-
-  Questions:
-
-   - do we AST to do this or can we do it some other way?
-   - if not AST, do we use a stack or recursion to dive in?
-
-
-  prototype objects:
-
-  - go through each class
-  - go through each attribute feature, to list of features
-
-  dispatch tables:
-
-  - go through each method and add to dispatch table
-
   */
   
 
@@ -891,6 +876,35 @@ void CgenClassTable::code()
 //                   - etc...
 
 }
+
+void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
+{
+  /* TODO:
+  1) add own attributes to static data structure
+  2) print out protobj
+  3) recurse
+  */
+  
+  ClassInfo ci;
+  ci.class_tag = giveClassTag();
+
+  for (int i = node->features->first(); node->features->more(i);
+       i = node->features->next(i)) {
+    cout << "I AM PRINTING OUT A METHOD OR FEATURE FOR " << node->name << endl;
+  }
+  
+  for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
+      first_pass(child->hd(), s);
+
+
+  /* Print out obj tag. */
+  /* Print out obj size. */
+  /* Print out obj attributes. */
+  /* Print out -1. */
+
+}
+
+
 
 
 CgenNodeP CgenClassTable::root()

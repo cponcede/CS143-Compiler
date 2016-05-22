@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
+#include <map>
+#include <vector>
 #include "emit.h"
 #include "cool-tree.h"
 #include "symtab.h"
@@ -7,6 +9,13 @@
 enum Basicness     {Basic, NotBasic};
 #define TRUE 1
 #define FALSE 0
+
+class ClassInfo {
+public:
+  std::vector<Symbol> attribute_types;
+  std::vector<Symbol> method_names;
+  int class_tag;
+};
 
 class CgenClassTable;
 typedef CgenClassTable *CgenClassTableP;
@@ -17,10 +26,12 @@ typedef CgenNode *CgenNodeP;
 class CgenClassTable : public SymbolTable<Symbol,CgenNode> {
 private:
    List<CgenNode> *nds;
+   std::map<Symbol, ClassInfo> class_info_map;
    ostream& str;
    int stringclasstag;
    int intclasstag;
    int boolclasstag;
+   int nextClassTagToGive;
 
 
 // The following methods emit code for
@@ -42,8 +53,10 @@ private:
    void install_classes(Classes cs);
    void build_inheritance_tree();
    void set_relations(CgenNodeP nd);
+   void first_pass(CgenNodeP node, ostream &s);
 public:
    CgenClassTable(Classes, ostream& str);
+   int giveClassTag();
    void code();
    CgenNodeP root();
 };
@@ -77,4 +90,7 @@ class BoolConst
   void code_def(ostream&, int boolclasstag);
   void code_ref(ostream&) const;
 };
+
+
+
 
