@@ -102,10 +102,14 @@ void ClassTable::add_class(Class_ current_class) {
     return;
   }
   if (inherits_from == SELF_TYPE) {
-    semant_error(current_class) << "Class " << class_name << " cannot inherit class SELF_TYPE" << endl;
+    semant_error(current_class) << "Class " << class_name << " cannot inherit class SELF_TYPE" << "." << endl;
   }
-  if (this->inheritance_map[class_name]) {
-    semant_error(current_class) << "Class with name " << class_name << " is defined multiple times." << endl;
+  if (this->inheritance_map.find(class_name) != this->inheritance_map.end()) {
+    if (class_name == Int || class_name == Str || class_name == Bool || class_name == Object
+        || class_name == IO)
+      semant_error(current_class) << "Redefinition of basic class " << class_name << "." << endl;
+     else 
+      semant_error(current_class) << "Class " << class_name << " was previously defined." << endl;
     return;
   }
   /* Ensure no class attempts to inherit from basic classes other than Object. */
@@ -193,12 +197,12 @@ bool ClassTable::class_defined(Symbol target) {
 
 
 ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) {
-  
+  install_basic_classes();
   for (int i = classes->first(); classes->more(i); i = classes->next(i)) {
     Class_ current_class = classes->nth(i);
     add_class(current_class);
   }
-  install_basic_classes();
+  
 }
 
 Class_ create_object_class (Symbol filename) {
@@ -680,8 +684,9 @@ bool verify_proper_method_inheritence(Symbol name, Symbol return_type, Formals f
         classtable->semant_error(current_class->get_filename(), t) << "Incompatible number of formal "
           << "parameters in redefined method " << name << endl;
       else
-        classtable->semant_error(current_class->get_filename(), t) << "Incompatible formal parameter type "
-          << "in redefined method " << name << endl;
+        classtable->semant_error(current_class->get_filename(), t) << "In redefined method " << name
+          << ", parameter type " << formals->nth(i)->get_type() << " is different from original type "
+          << mte->get_nth_argument_type(i, parent_class, name) << endl;
       result = false;
     }
   }
@@ -735,8 +740,8 @@ bool method_class::verify_type()
   }
 
   if (!is_subclass(expr->get_type(), return_type)) {
-    classtable->semant_error(current_class->get_filename(), this) << "Method " << name << "'s expression type of " 
-      << expr->get_type() << " does not match method's return type of " << return_type << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Inferred return type " << expr->get_type()
+      << " of method " << name << " does not conform to declared return type " << return_type << "." << endl;
     st->exitscope();
     return false;
   }
@@ -749,7 +754,7 @@ bool attr_class::verify_type()
   bool result = true;
 
   if (this->name == self) {
-    classtable->semant_error(current_class->get_filename(), this) << "Attribute incorrectly named keyword self" << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "\'self\' cannot be the name of an attribute." << endl;
     result = false;
   }
 
@@ -828,9 +833,9 @@ bool assign_class::verify_type()
     return false;
 
   if (!is_subclass(expr->get_type(), found_type)) {
-    classtable->semant_error(current_class->get_filename(), this) << "Object identifier " << name <<
-      " with type " << found_type <<
-      " does not match type of its assignment " << expr->get_type() << endl;
+    classtable->semant_error(current_class->get_filename(), this) << "Type " << expr->get_type()
+      << " of assigned expression does not conform to declared type " << found_type
+      << " of identifier " << name << "." << endl;
     this->type = Object;
     result = false;
   }

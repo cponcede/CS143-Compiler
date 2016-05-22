@@ -1,0 +1,35 @@
+The following bug fixes were made for PA3 regrade. Nearly all of the bug fixes
+involved changing error message wording.
+
+1. Fixed error message for semantic error involving an attribute with name 'self'. 
+Our original error missage was missing an "an". This was tested in anattributenamedself.cl. 
+(code change around semant.cc:758)
+
+2. Fixed error message for assignnoconform.cl to match the solution's error message. 
+This is the semantic error involving an assignment expression not conforming to the declared
+type of its identifier. 
+(code change around semant.cc:837)
+
+3. Instead of giving a "Redefinition of basic class Int" error message for redefining 
+basic classes, we gave an error message that told the programmer that the class with name 
+Int was defined multiple times. To fix the error message, an explicit check for the basic 
+classes to print the correct message was added. This fixed redefine-io.cl and 
+badredefineint.cl.
+(code change around semant.cc:110)
+
+4. We failed the inheritsself.cl and inherit-self.cl because our error message for
+inheriting type SELF_TYPE was missing a terminating ".". This has been fixed. 
+(code change around semant.cc:106)
+
+5. Fixed error message for when the body of a method does not conform to its declared
+return type. This fixes selftypebadreturn.cl, wrong-ret-type.cl, and lubtest.cl
+(code change around semant.cc:740)
+
+6. Fixed error message for incompatible formal argument types in redefined method to 
+match the solution. This bug was caught in the test for overridingmethod4.cl. 
+(code change around semant.cc:687)
+
+7. Fixed error message for redefining a class to match the solution. This fixed redefinedclass.cl
+and multi-class-decl.cl. The required bug fix was to add basic classes to the ClassTable before
+the classes defined in the program.
+(code change at semant.cc:200)
