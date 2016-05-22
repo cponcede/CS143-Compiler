@@ -877,7 +877,7 @@ bool static_dispatch_class::verify_type()
   /* Extra check for expected type in static dispatch. */
   if (!is_subclass(class_name, expected_class_name)) {
     classtable->semant_error(current_class->get_filename(), this) << "Type of expression in "
-      << " static dispatch statement does not match type " << expected_class_name << "." << endl;
+      << "static dispatch statement does not match type " << expected_class_name << endl;
     this->type = Object;
     result = false;
   }
