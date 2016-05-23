@@ -843,7 +843,9 @@ void CgenClassTable::code()
   CgenNodeP root_node = root();
   first_pass(root_node, cout);
   std::vector<Symbol> disptable_names;
-  recursively_emit_disptable(root_node, cout, disptable_names);
+  std::vector<Symbol> disptable_definers;
+  recursively_emit_disptable(root_node, cout, disptable_names, disptable_definers);
+  cout << WORD << -1 << endl; /* End of disp tables. */
   recursively_emit_prototype(root_node, cout, disptable_names);
   
 
@@ -863,16 +865,47 @@ void CgenClassTable::code()
 
 }
 
-void CgenClassTable::recursively_emit_disptable(CgenNodeP node, ostream &s, std::vector<Symbol>& disptable_names) {
-  /* TODO: Deal with overriding methods. */
-  return;
+
+void CgenClassTable::recursively_emit_disptable(CgenNodeP node, ostream &s, std::vector<Symbol> disptable_names, 
+                                                std::vector<Symbol> disptable_definers) {
+  std::vector<Symbol> our_disptable_names = disptable_names;
+  std::vector<Symbol> our_disptable_definers = disptable_definers;
+  std::vector<Symbol> method_names = class_info_map[node->name].method_names;
+  std::vector<Symbol> method_definers = class_info_map[node->name].method_definers;
+
+  /* Create our information to emit. */
+  for (size_t i = 0; i < method_names.size(); i++) {
+    /* Deal with overriding functions. */
+    bool is_overriding = false;
+    for (size_t j = 0; j < disptable_names.size(); j++) {
+      if (method_names[i] == disptable_names[j]) {
+        our_disptable_definers[j] = method_definers[i];
+        is_overriding = true;
+        break;
+      }
+    }
+    if (is_overriding) continue;
+
+    /* Add method to our definers. */
+    our_disptable_names.push_back(method_names[i]);
+    our_disptable_definers.push_back(method_definers[i]);
+  }
+
+  /* Perform the emit. */
+  emit_disptable_ref(node->name, cout);
+  cout << ":" << endl;
+
+  for (size_t i = 0; i < our_disptable_names.size(); i++) {
+    cout << WORD << our_disptable_definers[i] << "." << our_disptable_names[i] << endl;
+  }
+
+  for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
+      recursively_emit_disptable(child->hd(), s, our_disptable_names, our_disptable_definers);
+
 }
 
 void CgenClassTable::recursively_emit_prototype(CgenNodeP node, ostream &s, std::vector<Symbol>& prototype_types) {
   size_t type_counter = 0;
-  // for (std::map<Symbol, ClassInfo>::iterator it=class_info_map.begin(); it != class_info_map.end(); ++it) {
-
-  // }
 
   /* Fill up prototype_types with correct attributes. */
   std::vector<Symbol> types = class_info_map[node->name].attribute_types;
@@ -886,7 +919,7 @@ void CgenClassTable::recursively_emit_prototype(CgenNodeP node, ostream &s, std:
 
   cout << WORD << class_info_map[node->name].class_tag << endl;
   cout << WORD << prototype_types.size() + 3 << endl;
-  cout << WORD << "later_put_display_name" << endl;
+  cout << WORD << "TODO_dispatch_name" << endl;
 
   /* Print out all attributes. NOTE: WE PRINT OUT STR INSTEAD OF CORRECT CONST */
   for (size_t i = 0; i < prototype_types.size(); i++) {
@@ -916,6 +949,8 @@ void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
     Feature f = node->features->nth(i);
     if (f->is_method()) {
       ci.method_names.push_back(f->get_name());
+      ci.method_definers.push_back(node->get_name());
+      // cout << "Adding " << node->name << "." << f->get_name() << endl;
     } else {
       ci.attribute_types.push_back(f->get_type());
     }
@@ -923,9 +958,11 @@ void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
 
   class_info_map[node->name] = ci;
 
-  cout << "added " << class_info_map[node->name].method_names.size() << " methods and "
-       << class_info_map[node->name].attribute_types.size() << " attributes to class named "
-       << node->name << endl;
+  // cout << "added " << class_info_map[node->name].method_names.size() << " methods and "
+  //      << class_info_map[node->name].attribute_types.size() << " attributes to class named "
+  //      << node->name << endl << endl;
+  // cout << "definers is sized: " << class_info_map[node->name].method_names.size()
+  //      << " and methods is sized: " << class_info_map[node->name].method_definers.size() << endl << endl;
   
   for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
       first_pass(child->hd(), s);

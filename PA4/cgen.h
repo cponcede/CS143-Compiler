@@ -14,6 +14,7 @@ class ClassInfo {
 public:
   std::vector<Symbol> attribute_types;
   std::vector<Symbol> method_names;
+  std::vector<Symbol> method_definers;
   int class_tag;
 };
 
@@ -55,7 +56,7 @@ private:
    void set_relations(CgenNodeP nd);
    void first_pass(CgenNodeP node, ostream &s);
    void recursively_emit_prototype(CgenNodeP node, ostream &s, std::vector<Symbol>& prototype_types);
-   void recursively_emit_disptable(CgenNodeP node, ostream &s, std::vector<Symbol>& disptable_names);
+   void recursively_emit_disptable(CgenNodeP node, ostream &s, std::vector<Symbol> disptable_names, std::vector<Symbol> disptable_definers);
 public:
    CgenClassTable(Classes, ostream& str);
    int giveClassTag();

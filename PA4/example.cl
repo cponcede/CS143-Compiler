@@ -16,6 +16,7 @@ class A {
 };
 
 class B inherits A {
+	fun():Bool { false };
 	d : String;
 	e : Int;
 };
