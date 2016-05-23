@@ -1052,15 +1052,43 @@ void let_class::code(ostream &s) {
 }
 
 void plus_class::code(ostream &s) {
+  e1->code();
+  emit_store(ACC, 0, SP, s);
+  emit_addiu(SP, SP, -4, s);
+  e2->code();
+  emit_load(T1, 4, SP, s);
+  emit_add(ACC, T1, ACC);
+  emit_addiu(SP, SP, 4);
 }
 
 void sub_class::code(ostream &s) {
+  e1->code();
+  emit_store(ACC, 0, SP, s);
+  emit_addiu(SP, SP, -4, s);
+  e2->code();
+  emit_load(T1, 4, SP, s);
+  emit_sub(ACC, T1, ACC);
+  emit_addiu(SP, SP, 4);
 }
 
 void mul_class::code(ostream &s) {
+  e1->code();
+  emit_store(ACC, 0, SP, s);
+  emit_addiu(SP, SP, -4, s);
+  e2->code();
+  emit_load(T1, 4, SP, s);
+  emit_mul(ACC, T1, ACC);
+  emit_addiu(SP, SP, 4);
 }
 
 void divide_class::code(ostream &s) {
+  e1->code();
+  emit_store(ACC, 0, SP, s);
+  emit_addiu(SP, SP, -4, s);
+  e2->code();
+  emit_load(T1, 4, SP, s);
+  emit_div(ACC, T1, ACC);
+  emit_addiu(SP, SP, 4);
 }
 
 void neg_class::code(ostream &s) {
