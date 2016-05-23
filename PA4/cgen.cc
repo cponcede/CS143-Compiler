@@ -827,6 +827,22 @@ int CgenClassTable::giveClassTag() {
   return nextClassTagToGive++;
 }
 
+void CgenClassTable::emit_class_nameTab_helper(CgenNodeP node) {
+  StringEntry *entry = stringtable.lookup_string(node->get_name()->get_string());
+  cout << WORD;
+  entry->code_ref(cout);
+  cout << endl;
+  for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
+    emit_class_nameTab_helper(child->hd());
+}
+
+void CgenClassTable::emit_class_nameTab() {
+  /* TODO: Fix this. Probably something wrong with our string table? */
+  cout << CLASSNAMETAB << ":" << endl;
+  emit_class_nameTab_helper(this->root());
+}
+
+
 void CgenClassTable::code()
 {
   if (cgen_debug) cout << "coding global data" << endl;
@@ -842,6 +858,10 @@ void CgenClassTable::code()
 
   CgenNodeP root_node = root();
   first_pass(root_node, cout);
+  
+  emit_class_nameTab();
+  /* TODO: emit class_objTab */
+
   std::vector<Symbol> disptable_names;
   std::vector<Symbol> disptable_definers;
   recursively_emit_disptable(root_node, cout, disptable_names, disptable_definers);

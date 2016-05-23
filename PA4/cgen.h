@@ -37,7 +37,6 @@ private:
 
 // The following methods emit code for
 // constants and global declarations.
-
    void code_global_data();
    void code_global_text();
    void code_bools(int);
@@ -59,6 +58,8 @@ private:
    void recursively_emit_disptable(CgenNodeP node, ostream &s, std::vector<Symbol> disptable_names, std::vector<Symbol> disptable_definers);
 public:
    CgenClassTable(Classes, ostream& str);
+   void emit_class_nameTab();
+   void emit_class_nameTab_helper(CgenNodeP);
    int giveClassTag();
    void code();
    CgenNodeP root();
