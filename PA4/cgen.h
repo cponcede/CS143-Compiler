@@ -54,6 +54,8 @@ private:
    void build_inheritance_tree();
    void set_relations(CgenNodeP nd);
    void first_pass(CgenNodeP node, ostream &s);
+   void recursively_emit_prototype(CgenNodeP node, ostream &s, std::vector<Symbol>& prototype_types);
+   void recursively_emit_disptable(CgenNodeP node, ostream &s, std::vector<Symbol>& disptable_names);
 public:
    CgenClassTable(Classes, ostream& str);
    int giveClassTag();

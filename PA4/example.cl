@@ -27,5 +27,5 @@ class C {
 
 class D inherits B {
 	f : Int;
-	an_object : C;
+	an_object : C <- new C;
 };

@@ -842,23 +842,9 @@ void CgenClassTable::code()
 
   CgenNodeP root_node = root();
   first_pass(root_node, cout);
-
-  /*
-  std::queue<CgenNodeP> node_queue;
-  node_queue.push(root_node);
-
-  while (node_queue.size() != 0) {
-    CgenNodeP current = node_queue.front();
-    emit_protobj_ref (current->name, str);
-    str << ":" << endl;
-    for (List<CgenNode> *child = current->get_children(); child; child = child->tl())
-      node_queue.push(child->hd());
-
-    node_queue.pop();
-
-
-  }
-  */
+  std::vector<Symbol> disptable_names;
+  recursively_emit_disptable(root_node, cout, disptable_names);
+  recursively_emit_prototype(root_node, cout, disptable_names);
   
 
 //                 Add your code to emit
@@ -877,31 +863,72 @@ void CgenClassTable::code()
 
 }
 
+void CgenClassTable::recursively_emit_disptable(CgenNodeP node, ostream &s, std::vector<Symbol>& disptable_names) {
+  /* TODO: Deal with overriding methods. */
+  return;
+}
+
+void CgenClassTable::recursively_emit_prototype(CgenNodeP node, ostream &s, std::vector<Symbol>& prototype_types) {
+  size_t type_counter = 0;
+  // for (std::map<Symbol, ClassInfo>::iterator it=class_info_map.begin(); it != class_info_map.end(); ++it) {
+
+  // }
+
+  /* Fill up prototype_types with correct attributes. */
+  std::vector<Symbol> types = class_info_map[node->name].attribute_types;
+  for (size_t i = 0; i < types.size(); i++) {
+    type_counter++;
+    prototype_types.push_back(types[i]);
+  }
+
+  emit_protobj_ref(node->name, s);
+  cout << ":" << endl;
+
+  cout << WORD << class_info_map[node->name].class_tag << endl;
+  cout << WORD << prototype_types.size() + 3 << endl;
+  cout << WORD << "later_put_display_name" << endl;
+
+  /* Print out all attributes. NOTE: WE PRINT OUT STR INSTEAD OF CORRECT CONST */
+  for (size_t i = 0; i < prototype_types.size(); i++) {
+    cout << WORD << prototype_types[i] << endl;
+  }
+
+  cout << WORD << -1 << endl; /* Garbage Collection */
+
+  for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
+      recursively_emit_prototype(child->hd(), s, prototype_types);
+
+  /* Remove all added attributes. */
+  for (size_t i = 0; i < type_counter; i++) {
+    prototype_types.erase(prototype_types.begin() + (prototype_types.size() - 1));
+  }
+}
+
+
 void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
 {
-  /* TODO:
-  1) add own attributes to static data structure
-  2) print out protobj
-  3) recurse
-  */
-  
+  /* Form Map. */
   ClassInfo ci;
   ci.class_tag = giveClassTag();
 
   for (int i = node->features->first(); node->features->more(i);
        i = node->features->next(i)) {
-    cout << "I AM PRINTING OUT A METHOD OR FEATURE FOR " << node->name << endl;
+    Feature f = node->features->nth(i);
+    if (f->is_method()) {
+      ci.method_names.push_back(f->get_name());
+    } else {
+      ci.attribute_types.push_back(f->get_type());
+    }
   }
+
+  class_info_map[node->name] = ci;
+
+  cout << "added " << class_info_map[node->name].method_names.size() << " methods and "
+       << class_info_map[node->name].attribute_types.size() << " attributes to class named "
+       << node->name << endl;
   
   for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
       first_pass(child->hd(), s);
-
-
-  /* Print out obj tag. */
-  /* Print out obj size. */
-  /* Print out obj attributes. */
-  /* Print out -1. */
-
 }
 
 
