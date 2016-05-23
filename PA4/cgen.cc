@@ -137,7 +137,7 @@ void program_class::cgen(ostream &os)
 
   initialize_constants();
   CgenClassTable *codegen_classtable = new CgenClassTable(classes,os);
-
+  
   os << "\n# end of generated code\n";
 }
 
@@ -842,6 +842,9 @@ void CgenClassTable::emit_class_nameTab() {
   emit_class_nameTab_helper(this->root());
 }
 
+void CgenClassTable::emit_class_objTab() {
+  /* TODO: Implement */
+}
 
 void CgenClassTable::code()
 {
@@ -860,6 +863,7 @@ void CgenClassTable::code()
   first_pass(root_node, cout);
   
   emit_class_nameTab();
+  emit_class_objTab();
   /* TODO: emit class_objTab */
 
   std::vector<Symbol> disptable_names;
