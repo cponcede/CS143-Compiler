@@ -401,6 +401,7 @@ void StringEntry::code_def(ostream& s, int stringclasstag)
       << WORD << stringclasstag << endl                                 // tag
       << WORD << (DEFAULT_OBJFIELDS + STRING_SLOTS + (len+4)/4) << endl // size
       << WORD;
+  emit_disptable_ref(Str, s);
 
 
  /***** Add dispatch information for class String ******/
@@ -444,6 +445,7 @@ void IntEntry::code_def(ostream &s, int intclasstag)
       << WORD << intclasstag << endl                      // class tag
       << WORD << (DEFAULT_OBJFIELDS + INT_SLOTS) << endl  // object size
       << WORD; 
+  emit_disptable_ref(Int, s);
 
  /***** Add dispatch information for class Int ******/
 
@@ -488,6 +490,7 @@ void BoolConst::code_def(ostream& s, int boolclasstag)
       << WORD << boolclasstag << endl                       // class tag
       << WORD << (DEFAULT_OBJFIELDS + BOOL_SLOTS) << endl   // object size
       << WORD;
+  emit_disptable_ref(Bool, s);
 
  /***** Add dispatch information for class Bool ******/
 
@@ -829,16 +832,16 @@ int CgenClassTable::giveClassTag() {
 
 void CgenClassTable::emit_class_nameTab_helper(CgenNodeP node) {
   StringEntry *entry = stringtable.lookup_string(node->get_name()->get_string());
-  cout << WORD;
-  entry->code_ref(cout);
-  cout << endl;
+  str << WORD;
+  entry->code_ref(str);
+  str << endl;
   for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
     emit_class_nameTab_helper(child->hd());
 }
 
 void CgenClassTable::emit_class_nameTab() {
   /* TODO: Fix this. Probably something wrong with our string table? */
-  cout << CLASSNAMETAB << ":" << endl;
+  str << CLASSNAMETAB << ":" << endl;
   emit_class_nameTab_helper(this->root());
 }
 
@@ -860,7 +863,7 @@ void CgenClassTable::code()
   if (cgen_debug) cout << "coding prototype objects" << endl;
 
   CgenNodeP root_node = root();
-  first_pass(root_node, cout);
+  first_pass(root_node, str);
   
   emit_class_nameTab();
   emit_class_objTab();
@@ -868,9 +871,9 @@ void CgenClassTable::code()
 
   std::vector<Symbol> disptable_names;
   std::vector<Symbol> disptable_definers;
-  recursively_emit_disptable(root_node, cout, disptable_names, disptable_definers);
-  cout << WORD << -1 << endl; /* End of disp tables. */
-  recursively_emit_prototype(root_node, cout, disptable_names);
+  recursively_emit_disptable(root_node, str, disptable_names, disptable_definers);
+  str << WORD << -1 << endl; /* End of disp tables. */
+  recursively_emit_prototype(root_node, str, disptable_names);
   
 
 //                 Add your code to emit
@@ -916,11 +919,11 @@ void CgenClassTable::recursively_emit_disptable(CgenNodeP node, ostream &s, std:
   }
 
   /* Perform the emit. */
-  emit_disptable_ref(node->name, cout);
-  cout << ":" << endl;
+  emit_disptable_ref(node->name, s);
+  s << ":" << endl;
 
   for (size_t i = 0; i < our_disptable_names.size(); i++) {
-    cout << WORD << our_disptable_definers[i] << "." << our_disptable_names[i] << endl;
+    s << WORD << our_disptable_definers[i] << "." << our_disptable_names[i] << endl;
   }
 
   for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
@@ -939,18 +942,37 @@ void CgenClassTable::recursively_emit_prototype(CgenNodeP node, ostream &s, std:
   }
 
   emit_protobj_ref(node->name, s);
-  cout << ":" << endl;
+  s << ":" << endl;
 
-  cout << WORD << class_info_map[node->name].class_tag << endl;
-  cout << WORD << prototype_types.size() + 3 << endl;
-  cout << WORD << "TODO_dispatch_name" << endl;
+  s << WORD << class_info_map[node->name].class_tag << endl;
+  s << WORD << prototype_types.size() + 3 << endl;
+  emit_disptable_ref(node->name, s);
+  s << ":" << endl;
 
   /* Print out all attributes. NOTE: WE PRINT OUT STR INSTEAD OF CORRECT CONST */
   for (size_t i = 0; i < prototype_types.size(); i++) {
-    cout << WORD << prototype_types[i] << endl;
+    Symbol type = prototype_types[i];
+    /* Set to default values. */
+    if (type == Int) {
+      IntEntry *entry = inttable.lookup_string("0");
+      s << WORD;
+      entry->code_ref(s);
+      s << endl;
+    } else if (type == Str) {
+      StringEntry *entry = stringtable.lookup_string("");
+      s << WORD;
+      entry->code_ref(s);
+      s << endl;
+    } else if (type == Bool) {
+      s << WORD;
+      falsebool.code_ref(s);
+      s << endl;
+    } else {
+      s << WORD << "0" << endl;
+    }
   }
 
-  cout << WORD << -1 << endl; /* Garbage Collection */
+  s << WORD << -1 << endl; /* Garbage Collection */
 
   for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
       recursively_emit_prototype(child->hd(), s, prototype_types);
@@ -974,7 +996,6 @@ void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
     if (f->is_method()) {
       ci.method_names.push_back(f->get_name());
       ci.method_definers.push_back(node->get_name());
-      // cout << "Adding " << node->name << "." << f->get_name() << endl;
     } else {
       ci.attribute_types.push_back(f->get_type());
     }
@@ -1052,43 +1073,43 @@ void let_class::code(ostream &s) {
 }
 
 void plus_class::code(ostream &s) {
-  e1->code();
+  e1->code(s);
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
-  e2->code();
+  e2->code(s);
   emit_load(T1, 4, SP, s);
-  emit_add(ACC, T1, ACC);
-  emit_addiu(SP, SP, 4);
+  emit_add(ACC, T1, ACC, s);
+  emit_addiu(SP, SP, 4, s);
 }
 
 void sub_class::code(ostream &s) {
-  e1->code();
+  e1->code(s);
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
-  e2->code();
+  e2->code(s);
   emit_load(T1, 4, SP, s);
-  emit_sub(ACC, T1, ACC);
-  emit_addiu(SP, SP, 4);
+  emit_sub(ACC, T1, ACC, s);
+  emit_addiu(SP, SP, 4, s);
 }
 
 void mul_class::code(ostream &s) {
-  e1->code();
+  e1->code(s);
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
-  e2->code();
+  e2->code(s);
   emit_load(T1, 4, SP, s);
-  emit_mul(ACC, T1, ACC);
-  emit_addiu(SP, SP, 4);
+  emit_mul(ACC, T1, ACC, s);
+  emit_addiu(SP, SP, 4, s);
 }
 
 void divide_class::code(ostream &s) {
-  e1->code();
+  e1->code(s);
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
-  e2->code();
+  e2->code(s);
   emit_load(T1, 4, SP, s);
-  emit_div(ACC, T1, ACC);
-  emit_addiu(SP, SP, 4);
+  emit_div(ACC, T1, ACC, s);
+  emit_addiu(SP, SP, 4, s);
 }
 
 void neg_class::code(ostream &s) {
