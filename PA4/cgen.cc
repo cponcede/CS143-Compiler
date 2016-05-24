@@ -24,6 +24,7 @@
 
 #include "cgen.h"
 #include "cgen_gc.h"
+#include <string>
 #include <queue>
 
 extern void emit_string_constant(ostream& str, char *s);
@@ -861,19 +862,41 @@ void CgenClassTable::emit_class_objTab() {
 
 void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
   /* TODO: Emit code to initialize all attributes (and inherited attributes) */
+  emit_init_ref(node->get_name(), s);
+  s << ":" << endl;
+  /* TODO: Create room for this AR on the stack. */
+  emit_addiu(SP, SP, -12, s);
+  emit_store(FP, 3, SP, s);
+  emit_store(SELF, 2, SP, s);
+  emit_store(RA, 1, SP, s);
+  emit_addiu(FP, SP, 16, s);
+  emit_move(SELF, ACC, s);
+  /* TODO: move */
 
-  /* For each feature, add an expression to the method that assigns it its default value. */
-  Expressions init_expressions = nil_Expressions();
-  for (int i = node->features->first(); i = node->features->more(i); i = node->features->next(i)) {
+  if (node->get_parentnd()->get_name() != No_class) {
+    s << JAL;
+    emit_init_ref(node->get_parentnd()->get_name(), s);
+    s << endl;
+  }
+  /* TODO: Call parent class's init method. */
+  for (int i = node->features->first(); node->features->more(i); i = node->features->next(i)) {
     if (!node->features->nth(i)->is_method()) {
-      Expression attr_expr = assign(node->features->nth(i)->get_name(), node->features->nth(i)->get_init());
-      init_expressions = append_Expressions(init_expressions, single_Expressions(attr_expr));
+      if (node->features->nth(i)->get_init()->get_type() != No_type) {
+        node->features->nth(i)->get_init()->code(s);
+        int offset = attribute_offset(node, node->features->nth(i)->get_name());
+        emit_store(ACC, offset, SELF, s);
+      }
     }
   }
-  /* TODO: If this class has a parent class, call the init function of the parent class. */
-  /* TODO: Use the Expressions created above to initialize the object using the code generation for method defs. */
 
-  //method_class *init_method = new method_class(init, /* Formals */, /* ret type */, /* body expression */);
+  /* TODO: move */
+  emit_move(ACC, SELF, s);
+  emit_load(FP, 3, SP, s);
+  emit_load(SELF, 2, SP, s);
+  emit_load(RA, 1, SP, s);
+  emit_addiu(SP, SP, 12, s);
+  emit_return(s);
+  
 
   for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
     emit_object_inits(child->hd(), s);
@@ -1015,6 +1038,24 @@ void CgenClassTable::recursively_emit_prototype(CgenNodeP node, ostream &s, std:
   }
 }
 
+/* Returns the offset, in bytes, of the given attribute in an object represented by
+   class_node. */
+int CgenClassTable::attribute_offset(CgenNodeP class_node, Symbol attr_name) {
+  if (class_info_map.find(class_node->get_name()) == class_info_map.end()) {
+    cout << "Improper class name provided to attribute_offset" << endl;
+    return -1;
+  }
+  ClassInfo ci = class_info_map[class_node->get_name()];
+  for (int i = 0 ; i < ci.attribute_names.size() ; i++) {
+    if (ci.attribute_names[i] == attr_name)
+      return i + 3; // + 3 to account for class tag, object size, and disp pointer.
+  }
+  cout << "No attribute with name " << attr_name << " in class " << class_node->get_name() << " found" << endl;
+  return -1;
+
+
+}
+
 
 void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
 {
@@ -1029,6 +1070,7 @@ void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
       ci.method_names.push_back(f->get_name());
       ci.method_definers.push_back(node->get_name());
     } else {
+      ci.attribute_names.push_back(f->get_name());
       ci.attribute_types.push_back(f->get_type());
     }
   }

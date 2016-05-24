@@ -13,6 +13,7 @@ enum Basicness     {Basic, NotBasic};
 class ClassInfo {
 public:
   std::vector<Symbol> attribute_types;
+  std::vector<Symbol> attribute_names;
   std::vector<Symbol> method_names;
   std::vector<Symbol> method_definers;
   int class_tag;
@@ -61,6 +62,7 @@ private:
    void emit_class_nameTab();
    void emit_class_nameTab_helper(CgenNodeP);
    void emit_object_inits(CgenNodeP, ostream&);
+   int attribute_offset(CgenNodeP class_node, Symbol attr_name);
 public:
    CgenClassTable(Classes, ostream& str);
    int giveClassTag();
