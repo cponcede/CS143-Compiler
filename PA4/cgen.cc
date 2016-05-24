@@ -839,6 +839,16 @@ void CgenClassTable::emit_class_nameTab_helper(CgenNodeP node) {
     emit_class_nameTab_helper(child->hd());
 }
 
+void CgenClassTable::emit_class_objTab_helper(CgenNodeP node) {
+  str << WORD;
+  emit_protobj_ref(node->get_name(), str);
+  str << endl << WORD;
+  emit_init_ref(node->get_name(), str);
+  str << endl;
+  for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
+    emit_class_objTab_helper(child->hd());
+}
+
 void CgenClassTable::emit_class_nameTab() {
   /* TODO: Fix this. Probably something wrong with our string table? */
   str << CLASSNAMETAB << ":" << endl;
@@ -846,7 +856,8 @@ void CgenClassTable::emit_class_nameTab() {
 }
 
 void CgenClassTable::emit_class_objTab() {
-  /* TODO: Implement */
+  str << CLASSOBJTAB << ":" << endl;
+  emit_class_objTab_helper(this->root());
 }
 
 void CgenClassTable::code()
@@ -867,7 +878,6 @@ void CgenClassTable::code()
   
   emit_class_nameTab();
   emit_class_objTab();
-  /* TODO: emit class_objTab */
 
   std::vector<Symbol> disptable_names;
   std::vector<Symbol> disptable_definers;
@@ -946,8 +956,9 @@ void CgenClassTable::recursively_emit_prototype(CgenNodeP node, ostream &s, std:
 
   s << WORD << class_info_map[node->name].class_tag << endl;
   s << WORD << prototype_types.size() + 3 << endl;
+  s << WORD;
   emit_disptable_ref(node->name, s);
-  s << ":" << endl;
+  s << endl;
 
   /* Print out all attributes. NOTE: WE PRINT OUT STR INSTEAD OF CORRECT CONST */
   for (size_t i = 0; i < prototype_types.size(); i++) {

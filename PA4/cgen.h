@@ -57,6 +57,7 @@ private:
    void recursively_emit_prototype(CgenNodeP node, ostream &s, std::vector<Symbol>& prototype_types);
    void recursively_emit_disptable(CgenNodeP node, ostream &s, std::vector<Symbol> disptable_names, std::vector<Symbol> disptable_definers);
    void emit_class_objTab();
+   void emit_class_objTab_helper(CgenNodeP node);
    void emit_class_nameTab();
    void emit_class_nameTab_helper(CgenNodeP);
 public:
