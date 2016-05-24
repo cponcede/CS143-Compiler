@@ -63,6 +63,8 @@ private:
    void emit_class_nameTab_helper(CgenNodeP);
    void emit_object_inits(CgenNodeP, ostream&);
    int attribute_offset(CgenNodeP class_node, Symbol attr_name);
+   void emit_class_methods(CgenNodeP, ostream&);
+   void generate_method_code (CgenNodeP, method_class *, ostream&);
 public:
    CgenClassTable(Classes, ostream& str);
    int giveClassTag();

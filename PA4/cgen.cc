@@ -861,24 +861,24 @@ void CgenClassTable::emit_class_objTab() {
 }
 
 void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
-  /* TODO: Emit code to initialize all attributes (and inherited attributes) */
   emit_init_ref(node->get_name(), s);
   s << ":" << endl;
-  /* TODO: Create room for this AR on the stack. */
+
+  /* Enter method. */
   emit_addiu(SP, SP, -12, s);
   emit_store(FP, 3, SP, s);
   emit_store(SELF, 2, SP, s);
   emit_store(RA, 1, SP, s);
   emit_addiu(FP, SP, 16, s);
   emit_move(SELF, ACC, s);
-  /* TODO: move */
 
+  /* Call superparent's init method. */
   if (node->get_parentnd()->get_name() != No_class) {
     s << JAL;
     emit_init_ref(node->get_parentnd()->get_name(), s);
     s << endl;
   }
-  /* TODO: Call parent class's init method. */
+  /* Generate init code for features. */
   for (int i = node->features->first(); node->features->more(i); i = node->features->next(i)) {
     if (!node->features->nth(i)->is_method()) {
       if (node->features->nth(i)->get_init()->get_type() != No_type) {
@@ -889,7 +889,7 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
     }
   }
 
-  /* TODO: move */
+  /* Leave method. */
   emit_move(ACC, SELF, s);
   emit_load(FP, 3, SP, s);
   emit_load(SELF, 2, SP, s);
@@ -897,9 +897,48 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
   emit_addiu(SP, SP, 12, s);
   emit_return(s);
   
-
+  /* Recurse. */
   for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
     emit_object_inits(child->hd(), s);
+}
+
+
+void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method, ostream& s) {
+  emit_method_ref(node->get_name(), method->get_name(), s);
+  s << ":" << endl;
+
+  /* Enter method. */
+  emit_addiu(SP, SP, -12, s);
+  emit_store(FP, 3, SP, s);
+  emit_store(SELF, 2, SP, s);
+  emit_store(RA, 1, SP, s);
+  emit_addiu(FP, SP, 16, s);
+  emit_move(SELF, ACC, s);
+
+  /* Evaluate expression. */
+  method->expr->code(s);
+
+  /* Leave method. */
+  emit_load(FP, 3, SP, s);
+  emit_load(SELF, 2, SP, s);
+  emit_load(RA, 1, SP, s);
+  emit_addiu(SP, SP, 12, s);
+  emit_return(s);
+
+}
+
+void CgenClassTable::emit_class_methods(CgenNodeP node, ostream& s) {
+  /* Generate init code for features. */
+  for (int i = node->features->first(); node->features->more(i); i = node->features->next(i)) {
+    if (node->features->nth(i)->is_method() && !node->basic()) {
+      method_class *method = (method_class *)node->features->nth(i);
+      generate_method_code(node, method, s);
+    }
+  }
+
+  /* Recurse to other classes. */
+  for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
+    emit_class_methods(child->hd(), s);
 }
 
 void CgenClassTable::code()
@@ -926,19 +965,12 @@ void CgenClassTable::code()
   recursively_emit_disptable(root_node, str, disptable_names, disptable_definers);
   str << WORD << -1 << endl; /* End of disp tables. */
   recursively_emit_prototype(root_node, str, disptable_names);
-  
-
-//                 Add your code to emit
-//                   - prototype objects
-//                   - class_nameTab
-//                   - dispatch tables
-//
 
   if (cgen_debug) cout << "coding global text" << endl;
   code_global_text();
 
   emit_object_inits(root_node, str);
-
+  emit_class_methods(root_node, str);
 //                 Add your code to emit
 //                   - object initializer
 //                   - the class methods
