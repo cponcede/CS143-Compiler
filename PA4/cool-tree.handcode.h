@@ -72,7 +72,8 @@ void dump_with_types(ostream&,int);
 virtual void dump_with_types(ostream&,int) = 0; 				\
 virtual bool is_method() = 0;									\
 virtual Symbol get_type() = 0;									\
-virtual Symbol get_name() = 0;
+virtual Symbol get_name() = 0;									\
+virtual Expression get_init() = 0;
 
 
 #define Feature_SHARED_EXTRAS                                       \
@@ -82,12 +83,15 @@ Symbol get_name() { return name; }
 
 #define method_EXTRAS										\
 bool is_method() { return true; }							\
-Symbol get_type() { return return_type; }
+Symbol get_type() { return return_type; }					\
+Expression get_init() { return expr; } //Throw away. Do not call.
+
 
 
 #define attr_EXTRAS											\
 bool is_method() { return false; }							\
-Symbol get_type() { return type_decl; }				
+Symbol get_type() { return type_decl; }						\
+Expression get_init() { return init; }		
 
 
 #define Formal_EXTRAS                              \

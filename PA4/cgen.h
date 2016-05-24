@@ -60,6 +60,7 @@ private:
    void emit_class_objTab_helper(CgenNodeP node);
    void emit_class_nameTab();
    void emit_class_nameTab_helper(CgenNodeP);
+   void emit_object_inits(CgenNodeP, ostream&);
 public:
    CgenClassTable(Classes, ostream& str);
    int giveClassTag();

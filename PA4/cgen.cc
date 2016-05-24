@@ -850,7 +850,6 @@ void CgenClassTable::emit_class_objTab_helper(CgenNodeP node) {
 }
 
 void CgenClassTable::emit_class_nameTab() {
-  /* TODO: Fix this. Probably something wrong with our string table? */
   str << CLASSNAMETAB << ":" << endl;
   emit_class_nameTab_helper(this->root());
 }
@@ -858,6 +857,26 @@ void CgenClassTable::emit_class_nameTab() {
 void CgenClassTable::emit_class_objTab() {
   str << CLASSOBJTAB << ":" << endl;
   emit_class_objTab_helper(this->root());
+}
+
+void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
+  /* TODO: Emit code to initialize all attributes (and inherited attributes) */
+
+  /* For each feature, add an expression to the method that assigns it its default value. */
+  Expressions init_expressions = nil_Expressions();
+  for (int i = node->features->first(); i = node->features->more(i); i = node->features->next(i)) {
+    if (!node->features->nth(i)->is_method()) {
+      Expression attr_expr = assign(node->features->nth(i)->get_name(), node->features->nth(i)->get_init());
+      init_expressions = append_Expressions(init_expressions, single_Expressions(attr_expr));
+    }
+  }
+  /* TODO: If this class has a parent class, call the init function of the parent class. */
+  /* TODO: Use the Expressions created above to initialize the object using the code generation for method defs. */
+
+  //method_class *init_method = new method_class(init, /* Formals */, /* ret type */, /* body expression */);
+
+  for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
+    emit_object_inits(child->hd(), s);
 }
 
 void CgenClassTable::code()
@@ -894,6 +913,8 @@ void CgenClassTable::code()
 
   if (cgen_debug) cout << "coding global text" << endl;
   code_global_text();
+
+  emit_object_inits(root_node, str);
 
 //                 Add your code to emit
 //                   - object initializer
