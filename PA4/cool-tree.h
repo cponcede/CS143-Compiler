@@ -12,7 +12,7 @@
 #include "tree.h"
 #include "cool-tree.handcode.h"
 
-
+class method_class;
 // define the class for phylum
 // define simple phylum - Program
 typedef class Program_class *Program;
@@ -77,7 +77,7 @@ class Expression_class : public tree_node {
 public:
    tree_node *copy()		 { return copy_Expression(); }
    virtual Expression copy_Expression() = 0;
-
+   virtual void code(method_class *, ostream&) = 0;
 #ifdef Expression_EXTRAS
    Expression_EXTRAS
 #endif
@@ -178,14 +178,17 @@ public:
    Formals formals;
    Symbol return_type;
    Expression expr;
+   int offset;
 public:
    method_class(Symbol a1, Formals a2, Symbol a3, Expression a4) {
       name = a1;
       formals = a2;
       return_type = a3;
       expr = a4;
+      offset = 0;
    }
-   Feature copy_Feature();
+   int get_new_offset() { return offset--; }
+   Feature copy_Feature(); 
    void dump(ostream& stream, int n);
 
 #ifdef Feature_SHARED_EXTRAS
@@ -272,6 +275,7 @@ class assign_class : public Expression_class {
 public:
    Symbol name;
    Expression expr;
+   int next_local_offset = 0;
 public:
    assign_class(Symbol a1, Expression a2) {
       name = a1;
@@ -279,7 +283,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -305,7 +309,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -329,7 +333,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -353,7 +357,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -375,7 +379,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -397,7 +401,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -417,7 +421,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -443,7 +447,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -465,7 +469,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -487,7 +491,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -509,7 +513,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -531,7 +535,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -551,7 +555,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -573,7 +577,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -595,7 +599,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -617,7 +621,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -637,7 +641,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -657,7 +661,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -677,7 +681,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -697,7 +701,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -717,7 +721,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -737,7 +741,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -755,7 +759,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -775,7 +779,7 @@ public:
    }
    Expression copy_Expression();
    void dump(ostream& stream, int n);
-
+   void code(method_class *, ostream&);
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif

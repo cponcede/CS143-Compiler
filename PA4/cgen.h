@@ -62,11 +62,11 @@ private:
    void emit_class_nameTab();
    void emit_class_nameTab_helper(CgenNodeP);
    void emit_object_inits(CgenNodeP, ostream&);
-   int attribute_offset(CgenNodeP class_node, Symbol attr_name);
    void emit_class_methods(CgenNodeP, ostream&);
    void generate_method_code (CgenNodeP, method_class *, ostream&);
 public:
    CgenClassTable(Classes, ostream& str);
+   int attribute_offset(CgenNodeP class_node, Symbol attr_name);
    int giveClassTag();
    void code();
    CgenNodeP root();
@@ -79,7 +79,6 @@ private:
    List<CgenNode> *children;                  // Children of class
    Basicness basic_status;                    // `Basic' if class is basic
                                               // `NotBasic' otherwise
-
 public:
    CgenNode(Class_ c,
             Basicness bstatus,
@@ -90,6 +89,8 @@ public:
    void set_parentnd(CgenNodeP p);
    CgenNodeP get_parentnd() { return parentnd; }
    int basic() { return (basic_status == Basic); }
+   SymbolTable <Symbol, int> store;           // Maps local variable names to offset from FP
+
 };
 
 class BoolConst 

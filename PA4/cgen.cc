@@ -112,6 +112,12 @@ static char *gc_init_names[] =
 static char *gc_collect_names[] =
   { "_NoGC_Collect", "_GenGC_Collect", "_ScnGC_Collect" };
 
+/* Static variable used to track current class. */
+static CgenNodeP cur_class;
+
+/* Static CgenClassTable. */
+static CgenClassTable *ct;
+
 
 //  BoolConst is a class that implements code generation for operations
 //  on the two booleans, which are given global names here.
@@ -137,7 +143,7 @@ void program_class::cgen(ostream &os)
   os << "# start of generated code\n";
 
   initialize_constants();
-  CgenClassTable *codegen_classtable = new CgenClassTable(classes,os);
+  ct = new CgenClassTable(classes,os);
   
   os << "\n# end of generated code\n";
 }
@@ -861,6 +867,7 @@ void CgenClassTable::emit_class_objTab() {
 }
 
 void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
+  cur_class = node;
   emit_init_ref(node->get_name(), s);
   s << ":" << endl;
 
@@ -878,11 +885,12 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
     emit_init_ref(node->get_parentnd()->get_name(), s);
     s << endl;
   }
+  method_class *init_method = (method_class *)method(node->name, nil_Formals(), No_class, block(nil_Expressions()));
   /* Generate init code for features. */
   for (int i = node->features->first(); node->features->more(i); i = node->features->next(i)) {
     if (!node->features->nth(i)->is_method()) {
       if (node->features->nth(i)->get_init()->get_type() != No_type) {
-        node->features->nth(i)->get_init()->code(s);
+        node->features->nth(i)->get_init()->code(init_method, s);
         int offset = attribute_offset(node, node->features->nth(i)->get_name());
         emit_store(ACC, offset, SELF, s);
       }
@@ -916,7 +924,7 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
   emit_move(SELF, ACC, s);
 
   /* Evaluate expression. */
-  method->expr->code(s);
+  method->expr->code(method, s);
 
   /* Leave method. */
   emit_load(FP, 3, SP, s);
@@ -928,6 +936,8 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
 }
 
 void CgenClassTable::emit_class_methods(CgenNodeP node, ostream& s) {
+  cur_class = node;
+
   /* Generate init code for features. */
   for (int i = node->features->first(); node->features->more(i); i = node->features->next(i)) {
     if (node->features->nth(i)->is_method() && !node->basic()) {
@@ -1154,86 +1164,135 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
 //
 //*****************************************************************
 
-void assign_class::code(ostream &s) {
+void assign_class::code(method_class *method, ostream& s) {
+  expr->code(method, s);
+  int *offset = cur_class->store.lookup(name);
+
+  /* Attribute */
+  if (offset == NULL) {
+    int attr_offset = ct->attribute_offset(cur_class, name);
+    emit_store(ACC, attr_offset, SELF, s);
+    return;
+  }
+
+  /* Local variable */
+  emit_store(ACC, *offset, FP, s);
 }
 
-void static_dispatch_class::code(ostream &s) {
+void static_dispatch_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void dispatch_class::code(ostream &s) {
+void dispatch_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void cond_class::code(ostream &s) {
+void cond_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void loop_class::code(ostream &s) {
+void loop_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void typcase_class::code(ostream &s) {
+void typcase_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void block_class::code(ostream &s) {
+void block_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void let_class::code(ostream &s) {
-}
+void let_class::code(method_class *method, ostream& s) {
 
-void plus_class::code(ostream &s) {
-  e1->code(s);
+  /* Add new variable to store. */
+  cur_class->store.enterscope();
+  if (init->get_type() == No_class) {
+    init->code(method, s);
+  } else {
+    /* Special default values. */
+    if (type_decl == Bool || type_decl == Int || type_decl == Str) {
+      s << LA << ACC << " ";
+      emit_protobj_ref(type_decl, s);
+      s << endl;
+      emit_jal("Object.copy", s);
+    } else {
+      emit_load_imm(ACC, 0, s);
+    }
+  }
+  /* Put value inside of ACC into new local variable */
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
-  e2->code(s);
+  int offset = method->get_new_offset();
+  cur_class->store.addid(this->identifier, new int(offset));
+  emit_store(ACC, offset, FP, s);
+
+  /* Emit code for body */
+  body->code(method, s);
+  cur_class->store.exitscope();
+}
+
+void plus_class::code(method_class *method, ostream& s) {
+  e1->code(method, s);
+  emit_store(ACC, 0, SP, s);
+  emit_addiu(SP, SP, -4, s);
+  e2->code(method, s);
   emit_load(T1, 4, SP, s);
   emit_add(ACC, T1, ACC, s);
   emit_addiu(SP, SP, 4, s);
 }
 
-void sub_class::code(ostream &s) {
-  e1->code(s);
+void sub_class::code(method_class *method, ostream& s) {
+  e1->code(method, s);
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
-  e2->code(s);
+  e2->code(method, s);
   emit_load(T1, 4, SP, s);
   emit_sub(ACC, T1, ACC, s);
   emit_addiu(SP, SP, 4, s);
 }
 
-void mul_class::code(ostream &s) {
-  e1->code(s);
+void mul_class::code(method_class *method, ostream& s) {
+  e1->code(method, s);
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
-  e2->code(s);
+  e2->code(method, s);
   emit_load(T1, 4, SP, s);
   emit_mul(ACC, T1, ACC, s);
   emit_addiu(SP, SP, 4, s);
 }
 
-void divide_class::code(ostream &s) {
-  e1->code(s);
+void divide_class::code(method_class *method, ostream& s) {
+  e1->code(method, s);
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
-  e2->code(s);
+  e2->code(method, s);
   emit_load(T1, 4, SP, s);
   emit_div(ACC, T1, ACC, s);
   emit_addiu(SP, SP, 4, s);
 }
 
-void neg_class::code(ostream &s) {
+void neg_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void lt_class::code(ostream &s) {
+void lt_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void eq_class::code(ostream &s) {
+void eq_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void leq_class::code(ostream &s) {
+void leq_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void comp_class::code(ostream &s) {
+void comp_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void int_const_class::code(ostream& s)  
+void int_const_class::code(method_class *method, ostream& s)  
 {
   //
   // Need to be sure we have an IntEntry *, not an arbitrary Symbol
@@ -1241,26 +1300,45 @@ void int_const_class::code(ostream& s)
   emit_load_int(ACC,inttable.lookup_string(token->get_string()),s);
 }
 
-void string_const_class::code(ostream& s)
+void string_const_class::code(method_class *method, ostream& s)
 {
   emit_load_string(ACC,stringtable.lookup_string(token->get_string()),s);
 }
 
-void bool_const_class::code(ostream& s)
+void bool_const_class::code(method_class *method, ostream& s)
 {
   emit_load_bool(ACC, BoolConst(val), s);
 }
 
-void new__class::code(ostream &s) {
+void new__class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void isvoid_class::code(ostream &s) {
+void isvoid_class::code(method_class *method, ostream& s) {
+  /* TODO: Implement. */
 }
 
-void no_expr_class::code(ostream &s) {
+void no_expr_class::code(method_class *method, ostream& s) {
+  /* No need to do anything? */
 }
 
-void object_class::code(ostream &s) {
+void object_class::code(method_class *method, ostream& s) {
+  /* Handle self case. */
+  if (name == self) {
+    emit_move(ACC, SELF, s);
+    return;
+  }
+
+  int *offset = cur_class->store.lookup(name);
+  
+  /* Attribute. */
+  if (offset == NULL) {
+    int attr_offset = ct->attribute_offset(cur_class, name);
+    emit_load(ACC, attr_offset, SELF, s);
+    return;
+  }
+  /* Local */
+  emit_load(ACC, *offset, FP, s);
 }
 
 
