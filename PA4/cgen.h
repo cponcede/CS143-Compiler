@@ -33,7 +33,8 @@ private:
    int stringclasstag;
    int intclasstag;
    int boolclasstag;
-   int nextClassTagToGive;
+   int next_class_tag_to_give;
+   int next_label_to_give;
 
 
 // The following methods emit code for
@@ -67,7 +68,8 @@ private:
 public:
    CgenClassTable(Classes, ostream& str);
    int attribute_offset(CgenNodeP class_node, Symbol attr_name);
-   int giveClassTag();
+   int give_class_tag();
+   int give_label();
    void code();
    CgenNodeP root();
 };

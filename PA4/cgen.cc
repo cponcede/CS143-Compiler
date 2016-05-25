@@ -639,7 +639,8 @@ CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
    intclasstag =    INTCLASSTAG;
    boolclasstag =   BOOLCLASSTAG;
 
-   nextClassTagToGive = 0;
+   next_class_tag_to_give = 0;
+   next_label_to_give = 0;
 
    enterscope();
    if (cgen_debug) cout << "Building CgenClassTable" << endl;
@@ -833,8 +834,12 @@ void CgenNode::set_parentnd(CgenNodeP p)
   parentnd = p;
 }
 
-int CgenClassTable::giveClassTag() {
-  return nextClassTagToGive++;
+int CgenClassTable::give_class_tag() {
+  return next_class_tag_to_give++;
+}
+
+int CgenClassTable::give_label() {
+  return next_label_to_give++;
 }
 
 void CgenClassTable::emit_class_nameTab_helper(CgenNodeP node) {
@@ -912,6 +917,7 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
 
 
 void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method, ostream& s) {
+  /* TODO: Add formals to symbol table? */
   emit_method_ref(node->get_name(), method->get_name(), s);
   s << ":" << endl;
 
@@ -1103,7 +1109,7 @@ void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
 {
   /* Form Map. */
   ClassInfo ci;
-  ci.class_tag = giveClassTag();
+  ci.class_tag = give_class_tag();
 
   for (int i = node->features->first(); node->features->more(i);
        i = node->features->next(i)) {
@@ -1200,7 +1206,9 @@ void typcase_class::code(method_class *method, ostream& s) {
 }
 
 void block_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  for (int i = body->first(); body->more(i); i = body->next(i)) {
+    body->nth(i)->code(method, s);
+  }
 }
 
 void let_class::code(method_class *method, ostream& s) {
@@ -1275,7 +1283,18 @@ void divide_class::code(method_class *method, ostream& s) {
 }
 
 void neg_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  e1->code(method, s);
+  emit_fetch_int(T1, ACC, s);
+  emit_neg(T1, T1, s);
+
+  /* Save value on stack while creating Object copy. */
+  emit_push(T1, s);
+  emit_jal("Object.copy", s);
+
+  /* Retrieve value from stack and store in return object. */
+  emit_load(T1, 1, SP, s);
+  emit_addiu(SP, SP, 4, s);
+  emit_store(T1, DEFAULT_OBJFIELDS, ACC, s);
 }
 
 void lt_class::code(method_class *method, ostream& s) {
@@ -1283,15 +1302,55 @@ void lt_class::code(method_class *method, ostream& s) {
 }
 
 void eq_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  e1->code(method, s);
+  emit_push(ACC, s);
+  e2->code(method, s);
+  emit_load(T1, 1, SP, s);    //store result of e1 in T1
+  int finished_label = ct->give_label();
+  emit_load_bool(ACC, truebool, s);
+
+  emit_beq(T1, ACC, finished_label, s);     // Jump to end if the pointers are the same.
+
+  /* If not the same objects, compare using equality_test. */
+  if (cgen_debug)
+    cout << "Comparing objects for equality using equality_test" << endl;
+  emit_load_bool(A1, falsebool, s);
+  emit_jal("equality_test", s);
+
+  emit_label_def(finished_label, s);
+  emit_addiu(SP, SP, 4, s);
 }
 
 void leq_class::code(method_class *method, ostream& s) {
   /* TODO: Implement. */
 }
 
+/* Not operator */
 void comp_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  int begin_label = ct->give_label();
+  int end_label = ct->give_label();
+
+  e1->code(method, s);
+  /* If the below does not work, try this method of evaluating the bool: 
+
+  emit_load(T1, DEFAULT_OBJFIELDS, ACC, s);
+  emit_beqz(T1, begin_label, s);
+  */
+  emit_load_bool(T1, falsebool, s);
+  emit_beq(ACC, T1, begin_label, s);
+
+  /* If ACC contains true, then put false in ACC */
+  if (cgen_debug)
+    cout << "In a NOT operation, returning FALSE" << endl;
+  emit_load_bool(ACC, falsebool, s);
+  emit_branch(end_label, s);
+
+  /* If ACC contains false, then put true in ACC */
+  emit_label_def(begin_label, s);
+  if (cgen_debug)
+    cout << "In a NOT operation, returning TRUE" << endl;
+  emit_load_bool(ACC, truebool, s);
+  emit_label_def(end_label, s);
 }
 
 void int_const_class::code(method_class *method, ostream& s)  
@@ -1317,11 +1376,11 @@ void new__class::code(method_class *method, ostream& s) {
 }
 
 void isvoid_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+
 }
 
 void no_expr_class::code(method_class *method, ostream& s) {
-  /* No need to do anything? */
+  /* No need to do anything */
 }
 
 void object_class::code(method_class *method, ostream& s) {
