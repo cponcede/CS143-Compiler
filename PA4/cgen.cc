@@ -891,7 +891,7 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
     s << endl;
   }
   method_class *init_method = (method_class *)method(node->name, nil_Formals(), No_class, block(nil_Expressions()));
-  /* Generate init code for features. */
+  /* Generate init code for attributes. */
   for (int i = node->features->first(); node->features->more(i); i = node->features->next(i)) {
     if (!node->features->nth(i)->is_method()) {
       if (node->features->nth(i)->get_init()->get_type() != No_type) {
@@ -917,7 +917,8 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
 
 
 void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method, ostream& s) {
-  /* TODO: Add formals to symbol table? */
+  cur_class->store.enterscope();
+
   emit_method_ref(node->get_name(), method->get_name(), s);
   s << ":" << endl;
 
@@ -929,8 +930,18 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
   emit_addiu(FP, SP, 16, s);
   emit_move(SELF, ACC, s);
 
+  /* Add all formals to the  symbol table */
+  for (int i = formals->first(); formals->more(i); i = formals->next(i)) {
+    int offset = formals->len() - i + formals->first() + 2;
+    cur_class->store.addid(formals->nth(i)->get_name(), new int(offset));
+    if (cgen_debug)
+      cout << "Adding formal with name " << formals->nth(i)->get_name() << " at offset " << offset << " from FP " << endl;
+  }
+
   /* Evaluate expression. */
   method->expr->code(method, s);
+
+  cur_class->store.exitscope();
 
   /* Leave method. */
   emit_load(FP, 3, SP, s);
@@ -1171,6 +1182,10 @@ CgenNode::CgenNode(Class_ nd, Basicness bstatus, CgenClassTableP ct) :
 //*****************************************************************
 
 void assign_class::code(method_class *method, ostream& s) {
+  /* Invariants for our recursive algorithm:
+      1. Inside of a code call, any register values can change
+      2. When you leave a code call, the result is in ACC
+  */
   expr->code(method, s);
   int *offset = cur_class->store.lookup(name);
 
@@ -1215,7 +1230,8 @@ void let_class::code(method_class *method, ostream& s) {
 
   /* Add new variable to store. */
   cur_class->store.enterscope();
-  if (init->get_type() == No_class) {
+
+  if (init->get_type() != No_class) {
     init->code(method, s);
   } else {
     /* Special default values. */
@@ -1228,9 +1244,9 @@ void let_class::code(method_class *method, ostream& s) {
       emit_load_imm(ACC, 0, s);
     }
   }
+
   /* Put value inside of ACC into new local variable */
-  emit_store(ACC, 0, SP, s);
-  emit_addiu(SP, SP, -4, s);
+  emit_push(ACC, s);
   int offset = method->get_new_offset();
   cur_class->store.addid(this->identifier, new int(offset));
   emit_store(ACC, offset, FP, s);
@@ -1322,7 +1338,23 @@ void eq_class::code(method_class *method, ostream& s) {
 }
 
 void leq_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  e1->code(method, s);
+  emit_push(ACC, s);
+  e2->code(method, s);
+  emit_load(T1, 1, SP, s);    //store result of e1 in T1
+  emit_addiu(SP, SP, 4, s);
+
+  /* Instead of Int objects, get actual int values. */
+  emit_fetch_int(T1, T1, s);
+  emit_fetch_int(T2, ACC, s);
+  int finished_label = ct->give_label();
+  emit_load_bool(ACC, truebool, s);
+  emit_bleq(T1, T2, finished_label, s);
+
+  emit_load_bool(ACC, falsebool, s);
+
+  emit_label_def(finished_label, s);
+
 }
 
 /* Not operator */
@@ -1376,11 +1408,11 @@ void new__class::code(method_class *method, ostream& s) {
 }
 
 void isvoid_class::code(method_class *method, ostream& s) {
-
+  /* TODO: Implement. */
 }
 
 void no_expr_class::code(method_class *method, ostream& s) {
-  /* No need to do anything */
+  emit_load_imm(ACC, 0);
 }
 
 void object_class::code(method_class *method, ostream& s) {
