@@ -4,6 +4,6 @@ class Main {
   main():Int {
   	let b : Int <- 1 in
   		let c : Int <- 2 in
-  			b
+  			a + b + c
   };
 };

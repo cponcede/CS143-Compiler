@@ -646,7 +646,7 @@ CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
    install_basic_classes();
    install_classes(classes);
    build_inheritance_tree();
-
+   ct = this;         // Set ct to this because we never leave constructor.
    code();
    exitscope();
 }
@@ -1229,6 +1229,8 @@ void let_class::code(method_class *method, ostream& s) {
 
   /* Emit code for body */
   body->code(method, s);
+  emit_addiu(SP, SP, 4, s);
+
   cur_class->store.exitscope();
 }
 
@@ -1333,6 +1335,7 @@ void object_class::code(method_class *method, ostream& s) {
   
   /* Attribute. */
   if (offset == NULL) {
+    if (ct == NULL)  cout << "CT WAS NULL :(" << endl;
     int attr_offset = ct->attribute_offset(cur_class, name);
     emit_load(ACC, attr_offset, SELF, s);
     return;
