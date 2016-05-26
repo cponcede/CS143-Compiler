@@ -882,7 +882,7 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
   emit_store(FP, 3, SP, s);
   emit_store(SELF, 2, SP, s);
   emit_store(RA, 1, SP, s);
-  emit_addiu(FP, SP, 16, s);
+  emit_addiu(FP, SP, 12, s);
   emit_move(SELF, ACC, s);
 
   /* Call superparent's init method. */
@@ -924,16 +924,12 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
   s << ":" << endl;
 
   /* Enter method. */
-  emit_addiu(SP, SP, -12, s);
-  emit_store(FP, 3, SP, s);
-  emit_store(SELF, 2, SP, s);
-  emit_store(RA, 1, SP, s);
-  emit_addiu(FP, SP, 16, s);
-  emit_move(SELF, ACC, s);
+  emit_move(FP, SP, s);
+  emit_push(RA, s);
 
   /* Add all formals to the  symbol table */
   for (int i = method->formals->first(); method->formals->more(i); i = method->formals->next(i)) {
-    int offset = method->formals->len() - i + method->formals->first() + 2;
+    int offset = i + 1;
     cur_class->store.addid(method->formals->nth(i)->get_name(), new int(offset));
     if (cgen_debug)
       cout << "Adding formal with name " << method->formals->nth(i)->get_name() << " at offset " << offset << " from FP " << endl;
@@ -942,13 +938,12 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
   /* Evaluate expression. */
   method->expr->code(method, s);
 
-  cur_class->store.exitscope();
-
   /* Leave method. */
-  emit_load(FP, 3, SP, s);
-  emit_load(SELF, 2, SP, s);
+  cur_class->store.exitscope();
   emit_load(RA, 1, SP, s);
-  emit_addiu(SP, SP, 12, s);
+  int frame_size = method->formals->len()*WORD_SIZE + 8;
+  emit_addiu(SP, SP, frame_size, s);
+  emit_load(FP, 0, SP, s);
   emit_return(s);
 
 }
@@ -1207,6 +1202,9 @@ void static_dispatch_class::code(method_class *method, ostream& s) {
 }
 
 void dispatch_class::code(method_class *method, ostream& s) {
+  /* Save FP value of containg frame. */
+  emit_push(FP, s);
+
   std::stack<Expression> expression_stack;
   for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
     expression_stack.push(actual->nth(i));
@@ -1219,21 +1217,26 @@ void dispatch_class::code(method_class *method, ostream& s) {
     emit_push(ACC, s);
   }
 
-  /* Get caller function. */
+  /* Calling object. */
   expr->code(method, s);
-  Symbol type = expr->get_type();
-  ClassInfo ci = ct->class_info_map[type];
 
   /* Check for dispatch on void object. */
   int not_void_label = ct->give_label();
   emit_bne(ACC, ZERO, not_void_label, s);
+
+  /* Runtime error: dispatch on void. */
   StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
   emit_load_string(ACC, filename, s);
-
   /* TODO: Get line number. */
   int line_num = 9999;
   emit_load_imm(T1, line_num, s);
   emit_jal("_dispatch_abort", s);
+
+  /* Get proper method to invoke. */
+  Symbol type = expr->get_type();
+  if (type == SELF_TYPE)
+    type = cur_class->get_name();
+  ClassInfo ci = ct->class_info_map[type];
 
   int method_offset = -1;
   for (int i = 0; i < ci.method_names.size(); i++) {
@@ -1249,8 +1252,6 @@ void dispatch_class::code(method_class *method, ostream& s) {
   emit_load(ACC, method_offset, ACC, s);
   emit_jalr(ACC, s);
 
-  for (int i = actual->first(); actual->more(i); i = actual->next(i))
-    emit_addiu(SP, SP, 4, s);
 }
 
 void cond_class::code(method_class *method, ostream& s) {
