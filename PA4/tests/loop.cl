@@ -5,7 +5,7 @@ class Main {
 			while true loop -- change true to false for testing purposes
 			{
 				{
-					y = y + 1;
+					y <- y + 1;
 				};
 				
 			}

@@ -6,8 +6,8 @@ class Main {
 			while y < 9 loop -- change 9 to 7 and see if a.fun crashes or not to test
 			{
 				{
-					if y = 8 then a.fun() else 3 fi;
-					y = y + 1;
+					-- if y = 8 then a.fun() else 3 fi;
+					y <- y + 1;
 				};
 				
 			}
