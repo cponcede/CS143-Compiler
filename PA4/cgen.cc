@@ -929,7 +929,7 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
 
   /* Add all formals to the  symbol table */
   for (int i = method->formals->first(); method->formals->more(i); i = method->formals->next(i)) {
-    int offset = i + 1;
+    int offset = i - method->formals->first() + 1;
     cur_class->store.addid(method->formals->nth(i)->get_name(), new int(offset));
     if (cgen_debug)
       cout << "Adding formal with name " << method->formals->nth(i)->get_name() << " at offset " << offset << " from FP " << endl;
@@ -1278,8 +1278,8 @@ void loop_class::code(method_class *method, ostream& s) {
   /* Label containing all comparisons. */
   emit_label_def(begin_label, s);
   pred->code(method, s);
-  emit_load_bool(T1, falsebool, s);
-  emit_beq(ACC, T1, done_label, s);
+  emit_load(ACC, DEFAULT_OBJFIELDS, ACC, s);
+  emit_beqz(ACC, done_label, s);
 
   /* Run the body. */
   body->code(method, s);
@@ -1287,6 +1287,7 @@ void loop_class::code(method_class *method, ostream& s) {
 
   /* Jump here when done. */
   emit_label_def(done_label, s);
+  emit_load_imm(ACC, 0, s);
   /* TODO: load anything on here? */
 }
 
@@ -1337,9 +1338,14 @@ void plus_class::code(method_class *method, ostream& s) {
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
   e2->code(method, s);
-  emit_load(T1, 4, SP, s);
-  emit_add(ACC, T1, ACC, s);
+  emit_jal("Object.copy", s);
+  emit_fetch_int(T2, ACC, s);
+  emit_load(T1, 1, SP, s);
+  emit_fetch_int(T1, T1, s);
+  emit_add(T1, T1, T2, s);
   emit_addiu(SP, SP, 4, s);
+  emit_store_int(T1, ACC, s);
+
 }
 
 void sub_class::code(method_class *method, ostream& s) {
@@ -1347,7 +1353,7 @@ void sub_class::code(method_class *method, ostream& s) {
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
   e2->code(method, s);
-  emit_load(T1, 4, SP, s);
+  emit_load(T1, 1, SP, s);
   emit_sub(ACC, T1, ACC, s);
   emit_addiu(SP, SP, 4, s);
 }
@@ -1357,7 +1363,7 @@ void mul_class::code(method_class *method, ostream& s) {
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
   e2->code(method, s);
-  emit_load(T1, 4, SP, s);
+  emit_load(T1, 1, SP, s);
   emit_mul(ACC, T1, ACC, s);
   emit_addiu(SP, SP, 4, s);
 }
@@ -1367,7 +1373,7 @@ void divide_class::code(method_class *method, ostream& s) {
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
   e2->code(method, s);
-  emit_load(T1, 4, SP, s);
+  emit_load(T1, 1, SP, s);
   emit_div(ACC, T1, ACC, s);
   emit_addiu(SP, SP, 4, s);
 }
