@@ -1268,6 +1268,7 @@ void cond_class::code(method_class *method, ostream& s) {
   emit_branch(end_label, s);
   emit_label_def(false_label, s);
   else_exp->code(method, s);
+  emit_label_def(end_label, s);
 }
 
 void loop_class::code(method_class *method, ostream& s) {
