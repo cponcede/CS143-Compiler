@@ -901,7 +901,7 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
   emit_store(FP, 3, SP, s);
   emit_store(SELF, 2, SP, s);
   emit_store(RA, 1, SP, s);
-  emit_addiu(FP, SP, 12, s);
+  emit_addiu(FP, SP, 16, s);
   emit_move(SELF, ACC, s);
 
   /* Call superparent's init method. */
@@ -943,12 +943,16 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
   s << ":" << endl;
 
   /* Enter method. */
-  emit_move(FP, SP, s);
-  emit_push(RA, s);
+  emit_addiu(SP, SP, -12, s);
+  emit_store(FP, 3, SP, s);
+  emit_store(SELF, 2, SP, s);
+  emit_store(RA, 1, SP, s);
+  emit_addiu(FP, SP, 16, s);
+  emit_move(SELF, ACC, s);
 
   /* Add all formals to the  symbol table */
   for (int i = method->formals->first(); method->formals->more(i); i = method->formals->next(i)) {
-    int offset = i - method->formals->first() + 1;
+    int offset = i - method->formals->first(); // TODO: figure out if this should have a +1
     cur_class->store.addid(method->formals->nth(i)->get_name(), new int(offset));
     if (cgen_debug)
       cout << "Adding formal with name " << method->formals->nth(i)->get_name() << " at offset " << offset << " from FP " << endl;
@@ -959,10 +963,11 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
 
   /* Leave method. */
   cur_class->store.exitscope();
+  emit_load(FP, 3, SP, s);
+  emit_load(SELF, 2, SP, s);
   emit_load(RA, 1, SP, s);
-  int frame_size = method->formals->len()*WORD_SIZE + 8;
+  int frame_size = 12 + method->formals->len()*WORD_SIZE;
   emit_addiu(SP, SP, frame_size, s);
-  emit_load(FP, 0, SP, s);
   emit_return(s);
 
 }
@@ -1219,8 +1224,6 @@ void assign_class::code(method_class *method, ostream& s) {
 }
 
 void static_dispatch_class::code(method_class *method, ostream& s) {
-  /* Save FP value of containg frame. */
-  emit_push(FP, s);
 
   std::stack<Expression> expression_stack;
   for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
@@ -1244,7 +1247,7 @@ void static_dispatch_class::code(method_class *method, ostream& s) {
   /* Runtime error: dispatch on void. */
   StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
   emit_load_string(ACC, filename, s);
-  /* TODO: Get line number. */
+  
   int line_num = 9999;
   emit_load_imm(T1, line_num, s);
   emit_jal("_dispatch_abort", s);
@@ -1263,17 +1266,23 @@ void static_dispatch_class::code(method_class *method, ostream& s) {
       break;
     }
   }
+  if (method_offset == -1)
+    cout << "No method with name " << name << " found in dispatch." << endl;
 
   if (cgen_debug) cout << "Method offset found is " << method_offset << endl;
   emit_label_def(not_void_label, s);
-  emit_load(ACC, DISPTABLE_OFFSET, ACC, s);
-  emit_load(ACC, method_offset, ACC, s);
-  emit_jalr(ACC, s);
+  emit_load(T1, DISPTABLE_OFFSET, ACC, s);
+  emit_load(T1, method_offset, T1, s);
+  emit_jalr(T1, s);
+
+  /* Pop all arguments off the stack */
+  for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
+    emit_addiu(SP, SP, 4, s);
+  }
+
 }
 
 void dispatch_class::code(method_class *method, ostream& s) {
-  /* Save FP value of containg frame. */
-  emit_push(FP, s);
 
   std::stack<Expression> expression_stack;
   for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
@@ -1298,7 +1307,7 @@ void dispatch_class::code(method_class *method, ostream& s) {
   StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
   emit_load_string(ACC, filename, s);
   /* TODO: Get line number. */
-  int line_num = 9999;
+  int line_num = expr->get_line_number();
   emit_load_imm(T1, line_num, s);
   emit_jal("_dispatch_abort", s);
 
@@ -1319,9 +1328,10 @@ void dispatch_class::code(method_class *method, ostream& s) {
 
   if (cgen_debug) cout << "Method offset found is " << method_offset << endl;
   emit_label_def(not_void_label, s);
-  emit_load(ACC, DISPTABLE_OFFSET, ACC, s);
-  emit_load(ACC, method_offset, ACC, s);
-  emit_jalr(ACC, s);
+  emit_load(T1, DISPTABLE_OFFSET, ACC, s);
+  emit_load(T1, method_offset, T1, s);
+  emit_jalr(T1, s);
+
 }
 
 void cond_class::code(method_class *method, ostream& s) {
@@ -1368,7 +1378,7 @@ void typcase_class::code(method_class *method, ostream& s) {
   emit_bne(ACC, ZERO, valid_statement_label, s);
   StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
   emit_load_string(ACC, filename, s);
-  int line_num = 9999;                /* TODO: Get line number. */
+  int line_num = expr->get_line_number();              /* TODO: Get line number. */
   emit_load_imm(T1, line_num, s);
   emit_jal("_case_abort2", s);
   emit_branch(done_label, s);
