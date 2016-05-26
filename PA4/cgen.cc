@@ -1408,13 +1408,13 @@ void lt_class::code(method_class *method, ostream& s) {
 
 void eq_class::code(method_class *method, ostream& s) {
   e1->code(method, s);
-  emit_push(ACC, s);
+  emit_move(T1, ACC, s);    //store result of e1 in T1
   e2->code(method, s);
-  emit_load(T1, 1, SP, s);    //store result of e1 in T1
+  emit_move(T2, ACC, s);    //store result of e2 in T2
   int finished_label = ct->give_label();
   emit_load_bool(ACC, truebool, s);
 
-  emit_beq(T1, ACC, finished_label, s);     // Jump to end if the pointers are the same.
+  emit_beq(T1, T2, finished_label, s);     // Jump to end if the pointers are the same.
 
   /* If not the same objects, compare using equality_test. */
   if (cgen_debug)
@@ -1423,8 +1423,8 @@ void eq_class::code(method_class *method, ostream& s) {
   emit_jal("equality_test", s);
 
   emit_label_def(finished_label, s);
-  emit_addiu(SP, SP, 4, s);
 }
+
 
 void leq_class::code(method_class *method, ostream& s) {
   e1->code(method, s);
