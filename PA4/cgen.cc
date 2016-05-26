@@ -1560,7 +1560,20 @@ void bool_const_class::code(method_class *method, ostream& s)
 }
 
 void new__class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  /* Get correct Object type. */
+  Symbol type = type_name;
+
+  /* TODO: Deal with self_Type. */
+  if (type == SELF_TYPE) type = cur_class->get_name();
+
+  /* Find Object initialization information in class_objTab. */
+  emit_partial_load_address(ACC, s);
+  emit_protobj_ref(type, s);
+  s << endl;
+  emit_jal("Object.copy", s);
+  s << JAL;
+  emit_init_ref(type, s);
+  s << endl;
 }
 
 void isvoid_class::code(method_class *method, ostream& s) {
