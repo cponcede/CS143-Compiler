@@ -1564,7 +1564,14 @@ void new__class::code(method_class *method, ostream& s) {
 }
 
 void isvoid_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  e1->code(method, s);
+  int isvoid_label = ct->give_label();
+  emit_move(T1, ACC, s);
+  emit_load_bool(ACC, truebool, s);
+  emit_beqz(T1, isvoid_label, s);
+
+  emit_load_bool(ACC, falsebool, s);
+  emit_label_def(isvoid_label, s);
 }
 
 void no_expr_class::code(method_class *method, ostream& s) {
