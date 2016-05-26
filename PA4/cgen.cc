@@ -1330,6 +1330,7 @@ void let_class::code(method_class *method, ostream& s) {
   body->code(method, s);
   emit_addiu(SP, SP, 4, s);
 
+  method->restore_offset();
   cur_class->store.exitscope();
 }
 
@@ -1353,9 +1354,13 @@ void sub_class::code(method_class *method, ostream& s) {
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
   e2->code(method, s);
+  emit_jal("Object.copy", s);
+  emit_fetch_int(T2, ACC, s);
   emit_load(T1, 1, SP, s);
-  emit_sub(ACC, T1, ACC, s);
+  emit_fetch_int(T1, T1, s);
+  emit_sub(T1, T1, T2, s);
   emit_addiu(SP, SP, 4, s);
+  emit_store_int(T1, ACC, s);
 }
 
 void mul_class::code(method_class *method, ostream& s) {
@@ -1363,9 +1368,13 @@ void mul_class::code(method_class *method, ostream& s) {
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
   e2->code(method, s);
+  emit_jal("Object.copy", s);
+  emit_fetch_int(T2, ACC, s);
   emit_load(T1, 1, SP, s);
-  emit_mul(ACC, T1, ACC, s);
+  emit_fetch_int(T1, T1, s);
+  emit_mul(T1, T1, T2, s);
   emit_addiu(SP, SP, 4, s);
+  emit_store_int(T1, ACC, s);
 }
 
 void divide_class::code(method_class *method, ostream& s) {
@@ -1373,9 +1382,13 @@ void divide_class::code(method_class *method, ostream& s) {
   emit_store(ACC, 0, SP, s);
   emit_addiu(SP, SP, -4, s);
   e2->code(method, s);
+  emit_jal("Object.copy", s);
+  emit_fetch_int(T2, ACC, s);
   emit_load(T1, 1, SP, s);
-  emit_div(ACC, T1, ACC, s);
+  emit_fetch_int(T1, T1, s);
+  emit_div(T1, T1, T2, s);
   emit_addiu(SP, SP, 4, s);
+  emit_store_int(T1, ACC, s);
 }
 
 void neg_class::code(method_class *method, ostream& s) {
@@ -1521,7 +1534,6 @@ void object_class::code(method_class *method, ostream& s) {
   
   /* Attribute. */
   if (offset == NULL) {
-    if (ct == NULL)  cout << "CT WAS NULL :(" << endl;
     int attr_offset = ct->attribute_offset(cur_class, name);
     emit_load(ACC, attr_offset, SELF, s);
     return;

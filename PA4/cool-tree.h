@@ -185,9 +185,10 @@ public:
       formals = a2;
       return_type = a3;
       expr = a4;
-      offset = 0;  // TODO: Should this start at 0 or -1?
+      offset = -1;  // TODO: Should this start at 0 or -1?
    }
    int get_new_offset() { return offset--; }
+   void restore_offset() { offset++; }
    Feature copy_Feature(); 
    void dump(ostream& stream, int n);
 
