@@ -28,7 +28,7 @@ typedef CgenNode *CgenNodeP;
 class CgenClassTable : public SymbolTable<Symbol,CgenNode> {
 private:
    List<CgenNode> *nds;
-   std::map<Symbol, ClassInfo> class_info_map;
+   std::vector<Symbol> class_tags;
    ostream& str;
    int stringclasstag;
    int intclasstag;
@@ -72,6 +72,7 @@ public:
    int give_label();
    void code();
    CgenNodeP root();
+   std::map<Symbol, ClassInfo> class_info_map;
 };
 
 

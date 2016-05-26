@@ -275,7 +275,6 @@ class assign_class : public Expression_class {
 public:
    Symbol name;
    Expression expr;
-   int next_local_offset = 0;
 public:
    assign_class(Symbol a1, Expression a2) {
       name = a1;

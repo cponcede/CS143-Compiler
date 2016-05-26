@@ -24,8 +24,9 @@
 
 #include "cgen.h"
 #include "cgen_gc.h"
-#include <string>
 #include <queue>
+#include <stack>
+#include <string>
 
 extern void emit_string_constant(ostream& str, char *s);
 extern int cgen_debug;
@@ -931,11 +932,11 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
   emit_move(SELF, ACC, s);
 
   /* Add all formals to the  symbol table */
-  for (int i = formals->first(); formals->more(i); i = formals->next(i)) {
-    int offset = formals->len() - i + formals->first() + 2;
-    cur_class->store.addid(formals->nth(i)->get_name(), new int(offset));
+  for (int i = method->formals->first(); method->formals->more(i); i = method->formals->next(i)) {
+    int offset = method->formals->len() - i + method->formals->first() + 2;
+    cur_class->store.addid(method->formals->nth(i)->get_name(), new int(offset));
     if (cgen_debug)
-      cout << "Adding formal with name " << formals->nth(i)->get_name() << " at offset " << offset << " from FP " << endl;
+      cout << "Adding formal with name " << method->formals->nth(i)->get_name() << " at offset " << offset << " from FP " << endl;
   }
 
   /* Evaluate expression. */
@@ -1135,6 +1136,7 @@ void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
   }
 
   class_info_map[node->name] = ci;
+  class_tags.push_back(node->name);
 
   // cout << "added " << class_info_map[node->name].method_names.size() << " methods and "
   //      << class_info_map[node->name].attribute_types.size() << " attributes to class named "
@@ -1205,7 +1207,50 @@ void static_dispatch_class::code(method_class *method, ostream& s) {
 }
 
 void dispatch_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  std::stack<Expression> expression_stack;
+  for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
+    expression_stack.push(actual->nth(i));
+  }
+
+  while (!expression_stack.empty()) {
+    Expression arg = expression_stack.top();
+    expression_stack.pop();
+    arg->code(method, s);
+    emit_push(ACC, s);
+  }
+
+  /* Get caller function. */
+  expr->code(method, s);
+  Symbol type = expr->get_type();
+  ClassInfo ci = ct->class_info_map[type];
+
+  /* Check for dispatch on void object. */
+  int not_void_label = ct->give_label();
+  emit_bne(ACC, ZERO, not_void_label, s);
+  StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
+  emit_load_string(ACC, filename, s);
+
+  /* TODO: Get line number. */
+  int line_num = 9999;
+  emit_load_imm(T1, line_num, s);
+  emit_jal("_dispatch_abort", s);
+
+  int method_offset = -1;
+  for (int i = 0; i < ci.method_names.size(); i++) {
+    if (ci.method_names[i] == name) {
+      method_offset = i;
+      break;
+    }
+  }
+
+  if (cgen_debug) cout << "Method offset found is " << method_offset << endl;
+  emit_label_def(not_void_label, s);
+  emit_load(ACC, DISPTABLE_OFFSET, ACC, s);
+  emit_load(ACC, method_offset, ACC, s);
+  emit_jalr(ACC, s);
+
+  for (int i = actual->first(); actual->more(i); i = actual->next(i))
+    emit_addiu(SP, SP, 4, s);
 }
 
 void cond_class::code(method_class *method, ostream& s) {
@@ -1412,7 +1457,7 @@ void isvoid_class::code(method_class *method, ostream& s) {
 }
 
 void no_expr_class::code(method_class *method, ostream& s) {
-  emit_load_imm(ACC, 0);
+  emit_load_imm(ACC, 0, s);
 }
 
 void object_class::code(method_class *method, ostream& s) {
