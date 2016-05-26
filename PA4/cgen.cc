@@ -854,11 +854,10 @@ CgenNodeP CgenClassTable::find_symbol(Symbol class_name, CgenNodeP node) {
 }
 
 Symbol CgenClassTable::get_parent(Symbol class_name) {
+  if (class_name == No_class) return No_class;
   CgenNodeP root_node = root();
   CgenNodeP node = find_symbol(class_name, root_node);
   CgenNodeP parent = node->get_parentnd();
-  if (parent == NULL)
-    cout << "parent was NULL in get_parent_type!" << endl;
   return parent->name;
 }
 
@@ -1386,7 +1385,7 @@ void typcase_class::code(method_class *method, ostream& s) {
   int branch_index = -1;
 
   /* Determine closest type to expr type. */
-  while (found_type == No_type && type != No_type) {
+  while (found_type == No_type && type != No_class) {
     for (int i = 0; i < possible_types.size(); i++) {
       if (type == possible_types[i]) {
         found_type = type;
@@ -1396,8 +1395,11 @@ void typcase_class::code(method_class *method, ostream& s) {
     }
     type = ct->get_parent(type);
   }
+
   if (found_type == No_type) {
-    cout << "No type found in case statement" << endl;
+    emit_jal("_case_abort", s);
+    emit_label_def(done_label, s);
+    return;
   }
 
   branch_class *branch = (branch_class *)cases->nth(branch_index);
