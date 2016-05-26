@@ -1362,6 +1362,20 @@ void typcase_class::code(method_class *method, ostream& s) {
   expr->code(method, s);
   Symbol type = expr->get_type();
 
+  /* Check for case on void object. */
+  int valid_statement_label = ct->give_label();
+  int done_label = ct->give_label();
+  emit_bne(ACC, ZERO, valid_statement_label, s);
+  StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
+  emit_load_string(ACC, filename, s);
+  int line_num = 9999;                /* TODO: Get line number. */
+  emit_load_imm(T1, line_num, s);
+  emit_jal("_case_abort2", s);
+  emit_branch(done_label, s);
+
+
+  /* Valid Case Statement. */
+  emit_label_def(valid_statement_label, s);
   std::vector<Symbol> possible_types;
   for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
     branch_class *branch = (branch_class *)cases->nth(i);
@@ -1373,7 +1387,7 @@ void typcase_class::code(method_class *method, ostream& s) {
 
   /* Determine closest type to expr type. */
   while (found_type == No_type && type != No_type) {
-    for (int i = 0 ; i < possible_types.size() ; i++) {
+    for (int i = 0; i < possible_types.size(); i++) {
       if (type == possible_types[i]) {
         found_type = type;
         branch_index = i;
@@ -1399,6 +1413,8 @@ void typcase_class::code(method_class *method, ostream& s) {
   method->restore_offset();
   cur_class->store.exitscope();
   emit_addiu(SP, SP, 4, s);
+
+  emit_label_def(done_label, s);
 }
 
 void block_class::code(method_class *method, ostream& s) {
