@@ -1200,7 +1200,56 @@ void assign_class::code(method_class *method, ostream& s) {
 }
 
 void static_dispatch_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  /* Save FP value of containg frame. */
+  emit_push(FP, s);
+
+  std::stack<Expression> expression_stack;
+  for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
+    expression_stack.push(actual->nth(i));
+  }
+
+  while (!expression_stack.empty()) {
+    Expression arg = expression_stack.top();
+    expression_stack.pop();
+    arg->code(method, s);
+    emit_push(ACC, s);
+  }
+
+  /* Calling object. */
+  expr->code(method, s);
+
+  /* Check for dispatch on void object. */
+  int not_void_label = ct->give_label();
+  emit_bne(ACC, ZERO, not_void_label, s);
+
+  /* Runtime error: dispatch on void. */
+  StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
+  emit_load_string(ACC, filename, s);
+  /* TODO: Get line number. */
+  int line_num = 9999;
+  emit_load_imm(T1, line_num, s);
+  emit_jal("_dispatch_abort", s);
+
+  /* Get proper method to invoke. */
+  Symbol type = type_name;
+  if (type == SELF_TYPE)
+    type = cur_class->get_name();
+
+  std::vector<Symbol> method_names = ct->class_to_method_map[type];
+
+  int method_offset = -1;
+  for (int i = 0; i < method_names.size(); i++) {
+    if (method_names[i] == name) {
+      method_offset = i;
+      break;
+    }
+  }
+
+  if (cgen_debug) cout << "Method offset found is " << method_offset << endl;
+  emit_label_def(not_void_label, s);
+  emit_load(ACC, DISPTABLE_OFFSET, ACC, s);
+  emit_load(ACC, method_offset, ACC, s);
+  emit_jalr(ACC, s);
 }
 
 void dispatch_class::code(method_class *method, ostream& s) {
@@ -1288,7 +1337,6 @@ void loop_class::code(method_class *method, ostream& s) {
   /* Jump here when done. */
   emit_label_def(done_label, s);
   emit_load_imm(ACC, 0, s);
-  /* TODO: load anything on here? */
 }
 
 void typcase_class::code(method_class *method, ostream& s) {
