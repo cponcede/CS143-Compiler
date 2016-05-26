@@ -1243,8 +1243,7 @@ void static_dispatch_class::code(method_class *method, ostream& s) {
   /* Runtime error: dispatch on void. */
   StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
   emit_load_string(ACC, filename, s);
-  /* TODO: Get line number. */
-  int line_num = 9999;
+  int line_num = expr->get_line_number();
   emit_load_imm(T1, line_num, s);
   emit_jal("_dispatch_abort", s);
 
@@ -1296,8 +1295,7 @@ void dispatch_class::code(method_class *method, ostream& s) {
   /* Runtime error: dispatch on void. */
   StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
   emit_load_string(ACC, filename, s);
-  /* TODO: Get line number. */
-  int line_num = 9999;
+  int line_num = expr->get_line_number();
   emit_load_imm(T1, line_num, s);
   emit_jal("_dispatch_abort", s);
 
@@ -1367,7 +1365,7 @@ void typcase_class::code(method_class *method, ostream& s) {
   emit_bne(ACC, ZERO, valid_statement_label, s);
   StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
   emit_load_string(ACC, filename, s);
-  int line_num = 9999;                /* TODO: Get line number. */
+  int line_num = expr->get_line_number();
   emit_load_imm(T1, line_num, s);
   emit_jal("_case_abort2", s);
   emit_branch(done_label, s);
