@@ -65,11 +65,13 @@ private:
    void emit_object_inits(CgenNodeP, ostream&);
    void emit_class_methods(CgenNodeP, ostream&);
    void generate_method_code (CgenNodeP, method_class *, ostream&);
+   CgenNodeP find_symbol(Symbol, CgenNodeP);
 public:
    CgenClassTable(Classes, ostream& str);
    int attribute_offset(CgenNodeP class_node, Symbol attr_name);
    int give_class_tag();
    int give_label();
+   Symbol get_parent(Symbol);
    void code();
    CgenNodeP root();
    std::map<Symbol, ClassInfo> class_info_map;

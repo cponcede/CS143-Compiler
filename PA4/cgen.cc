@@ -843,6 +843,25 @@ int CgenClassTable::give_label() {
   return next_label_to_give++;
 }
 
+CgenNodeP CgenClassTable::find_symbol(Symbol class_name, CgenNodeP node) {
+  if (node->name == class_name)
+    return node;
+  for (List<CgenNode> *child = node->get_children(); child; child = child->tl()) {
+    CgenNodeP found_node = find_symbol(class_name, child->hd());
+    if (found_node != NULL) return found_node;
+  }
+  return NULL;
+}
+
+Symbol CgenClassTable::get_parent(Symbol class_name) {
+  CgenNodeP root_node = root();
+  CgenNodeP node = find_symbol(class_name, root_node);
+  CgenNodeP parent = node->get_parentnd();
+  if (parent == NULL)
+    cout << "parent was NULL in get_parent_type!" << endl;
+  return parent->name;
+}
+
 void CgenClassTable::emit_class_nameTab_helper(CgenNodeP node) {
   StringEntry *entry = stringtable.lookup_string(node->get_name()->get_string());
   str << WORD;
@@ -1311,8 +1330,8 @@ void cond_class::code(method_class *method, ostream& s) {
   int false_label = ct->give_label();
   int end_label = ct->give_label();
 
-  emit_load_bool(T1, falsebool, s);
-  emit_beq(ACC, T1, false_label, s);
+  emit_load(ACC, DEFAULT_OBJFIELDS, ACC, s);
+  emit_beqz(ACC, false_label, s);
   then_exp->code(method, s);
   emit_branch(end_label, s);
   emit_label_def(false_label, s);
@@ -1340,7 +1359,46 @@ void loop_class::code(method_class *method, ostream& s) {
 }
 
 void typcase_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  expr->code(method, s);
+  Symbol type = expr->get_type();
+
+  std::vector<Symbol> possible_types;
+  for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
+    branch_class *branch = (branch_class *)cases->nth(i);
+    possible_types.push_back(branch->type_decl);
+  }
+
+  Symbol found_type = No_type;
+  int branch_index = -1;
+
+  /* Determine closest type to expr type. */
+  while (found_type == No_type && type != No_type) {
+    for (int i = 0 ; i < possible_types.size() ; i++) {
+      if (type == possible_types[i]) {
+        found_type = type;
+        branch_index = i;
+        break;
+      }
+    }
+    type = ct->get_parent(type);
+  }
+  if (found_type == No_type) {
+    cout << "No type found in case statement" << endl;
+  }
+
+  branch_class *branch = (branch_class *)cases->nth(branch_index);
+
+  /* Store variable. */
+  cur_class->store.enterscope();
+  emit_push(ACC, s);
+  int offset = method->get_new_offset();
+  cur_class->store.addid(branch->name, new int(offset));
+
+  branch->expr->code(method, s);
+
+  method->restore_offset();
+  cur_class->store.exitscope();
+  emit_addiu(SP, SP, 4, s);
 }
 
 void block_class::code(method_class *method, ostream& s) {
