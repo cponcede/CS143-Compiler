@@ -1027,6 +1027,8 @@ void CgenClassTable::recursively_emit_disptable(CgenNodeP node, ostream &s, std:
     our_disptable_definers.push_back(method_definers[i]);
   }
 
+  class_to_method_map[node->name] = our_disptable_names;
+
   /* Perform the emit. */
   emit_disptable_ref(node->name, s);
   s << ":" << endl;
@@ -1236,11 +1238,12 @@ void dispatch_class::code(method_class *method, ostream& s) {
   Symbol type = expr->get_type();
   if (type == SELF_TYPE)
     type = cur_class->get_name();
-  ClassInfo ci = ct->class_info_map[type];
+  /* TODO: error check type? */
+  std::vector<Symbol> method_names = ct->class_to_method_map[type];
 
   int method_offset = -1;
-  for (int i = 0; i < ci.method_names.size(); i++) {
-    if (ci.method_names[i] == name) {
+  for (int i = 0; i < method_names.size(); i++) {
+    if (method_names[i] == name) {
       method_offset = i;
       break;
     }
@@ -1251,7 +1254,6 @@ void dispatch_class::code(method_class *method, ostream& s) {
   emit_load(ACC, DISPTABLE_OFFSET, ACC, s);
   emit_load(ACC, method_offset, ACC, s);
   emit_jalr(ACC, s);
-
 }
 
 void cond_class::code(method_class *method, ostream& s) {

@@ -73,6 +73,8 @@ public:
    void code();
    CgenNodeP root();
    std::map<Symbol, ClassInfo> class_info_map;
+   std::map<Symbol, std::vector<Symbol> > class_to_method_map;
+
 };
 
 
