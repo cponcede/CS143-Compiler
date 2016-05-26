@@ -154,3 +154,29 @@ Instructions
 Write-up for PA4
 ----------------
 
+1.
+
+2.
+
+3. Testing Methodology:
+
+To test our program's initial code creation (objTable, etc.), we mostly matched
+our program with sample output. We just made sure that we had all necessary
+fields in the tables present - which we did by comparing to whatever the sample
+cgen outputted.
+
+The bulk of our testing came in the second (and more substantial) phase of code
+generation. To test our program, we created a separate directory called "tests,"
+which is in our submission for your viewing pleasure. Tests contains a series of
+tests that look at each of our code generation functions. Many of our tests rely
+on if statements and dispatch statments, so we made sure to implement them
+first. We would create a series of expressions that should have an expected
+behavior, and if they did have that behavior, then in an if statement we would
+dispatch to a void function. That way, we could tell if our code was working
+correctly, since it would dispatch to void only on correct input.
+
+After we thoroughly tested all our expressions through individual tests in the
+tests directory, we just ran our program for sample files against reference
+output, and saw how they differed. We used this to make sure that our code
+worked on large scale functions.
+

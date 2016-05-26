@@ -854,11 +854,10 @@ CgenNodeP CgenClassTable::find_symbol(Symbol class_name, CgenNodeP node) {
 }
 
 Symbol CgenClassTable::get_parent(Symbol class_name) {
+  if (class_name == No_class) return No_class;
   CgenNodeP root_node = root();
   CgenNodeP node = find_symbol(class_name, root_node);
   CgenNodeP parent = node->get_parentnd();
-  if (parent == NULL)
-    cout << "parent was NULL in get_parent_type!" << endl;
   return parent->name;
 }
 
@@ -1247,8 +1246,7 @@ void static_dispatch_class::code(method_class *method, ostream& s) {
   /* Runtime error: dispatch on void. */
   StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
   emit_load_string(ACC, filename, s);
-  
-  int line_num = 9999;
+  int line_num = expr->get_line_number();
   emit_load_imm(T1, line_num, s);
   emit_jal("_dispatch_abort", s);
 
@@ -1306,7 +1304,6 @@ void dispatch_class::code(method_class *method, ostream& s) {
   /* Runtime error: dispatch on void. */
   StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
   emit_load_string(ACC, filename, s);
-  /* TODO: Get line number. */
   int line_num = expr->get_line_number();
   emit_load_imm(T1, line_num, s);
   emit_jal("_dispatch_abort", s);
@@ -1378,7 +1375,7 @@ void typcase_class::code(method_class *method, ostream& s) {
   emit_bne(ACC, ZERO, valid_statement_label, s);
   StringEntry* filename = static_cast<StringEntry*>(cur_class->get_filename());
   emit_load_string(ACC, filename, s);
-  int line_num = expr->get_line_number();              /* TODO: Get line number. */
+  int line_num = expr->get_line_number();
   emit_load_imm(T1, line_num, s);
   emit_jal("_case_abort2", s);
   emit_branch(done_label, s);
@@ -1396,7 +1393,7 @@ void typcase_class::code(method_class *method, ostream& s) {
   int branch_index = -1;
 
   /* Determine closest type to expr type. */
-  while (found_type == No_type && type != No_type) {
+  while (found_type == No_type && type != No_class) {
     for (int i = 0; i < possible_types.size(); i++) {
       if (type == possible_types[i]) {
         found_type = type;
@@ -1406,8 +1403,11 @@ void typcase_class::code(method_class *method, ostream& s) {
     }
     type = ct->get_parent(type);
   }
+
   if (found_type == No_type) {
-    cout << "No type found in case statement" << endl;
+    emit_jal("_case_abort", s);
+    emit_label_def(done_label, s);
+    return;
   }
 
   branch_class *branch = (branch_class *)cases->nth(branch_index);
