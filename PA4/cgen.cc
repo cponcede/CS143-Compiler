@@ -1257,11 +1257,36 @@ void dispatch_class::code(method_class *method, ostream& s) {
 }
 
 void cond_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  /* TODO: Branching causes an unknown label. */
+  pred->code(method, s);
+  int false_label = ct->give_label();
+  int end_label = ct->give_label();
+
+  emit_load_bool(T1, falsebool, s);
+  emit_beq(ACC, T1, false_label, s);
+  then_exp->code(method, s);
+  emit_branch(end_label, s);
+  emit_label_def(false_label, s);
+  else_exp->code(method, s);
 }
 
 void loop_class::code(method_class *method, ostream& s) {
-  /* TODO: Implement. */
+  int begin_label = ct->give_label();
+  int done_label = ct->give_label();
+
+  /* Label containing all comparisons. */
+  emit_label_def(begin_label, s);
+  pred->code(method, s);
+  emit_load_bool(T1, falsebool, s);
+  emit_beq(ACC, T1, done_label, s);
+
+  /* Run the body. */
+  body->code(method, s);
+  emit_branch(begin_label, s);
+
+  /* Jump here when done. */
+  emit_label_def(done_label, s);
+  /* TODO: load anything on here? */
 }
 
 void typcase_class::code(method_class *method, ostream& s) {
