@@ -1,16 +1,16 @@
 
 class Main {
-	a: IO;
+	a : A;
+	x : Int;
 	main(): Int {
 		{
-			a <- new IO;
-			a.out_string("happy dayz");
-			5;
+			a <- new A;
+			x <- a.fun();
 		}
 	};
 };
 
 class A {
-	b : Int;
+	b : Int <- 10;
 	fun() : Int {b};
 };

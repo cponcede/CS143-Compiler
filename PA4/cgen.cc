@@ -1549,9 +1549,11 @@ void lt_class::code(method_class *method, ostream& s) {
 
 void eq_class::code(method_class *method, ostream& s) {
   e1->code(method, s);
-  emit_move(T1, ACC, s);    //store result of e1 in T1
+  emit_push(ACC, s);
   e2->code(method, s);
+  emit_load(T1, 1, SP, s);    //store result of e1 in T1
   emit_move(T2, ACC, s);    //store result of e2 in T2
+  emit_addiu(SP, SP, 4, s);
   int finished_label = ct->give_label();
   emit_load_bool(ACC, truebool, s);
 
