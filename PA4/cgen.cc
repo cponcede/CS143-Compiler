@@ -956,8 +956,9 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
 
   /* Add all formals to the  symbol table */
   for (int i = method->formals->first(); method->formals->more(i); i = method->formals->next(i)) {
-    int offset = i - method->formals->first(); // TODO: figure out if this should have a +1
+    int offset = i - method->formals->first() + 1; // TODO: figure out if this should have a +1
     cur_class->store.addid(method->formals->nth(i)->get_name(), new int(offset));
+    //cout << "Adding formal with name " << method->formals->nth(i)->get_name() << " at offset " << offset << " in cur_class " << cur_class->name << endl;
     if (cgen_debug)
       cout << "Adding formal with name " << method->formals->nth(i)->get_name() << " at offset " << offset << " from FP " << endl;
   }
@@ -1013,9 +1014,10 @@ void CgenClassTable::code()
 
   std::vector<Symbol> disptable_names;
   std::vector<Symbol> disptable_definers;
+  std::vector<Symbol> prototype_names;
   recursively_emit_disptable(root_node, str, disptable_names, disptable_definers);
   str << WORD << -1 << endl; /* End of disp tables. */
-  recursively_emit_prototype(root_node, str, disptable_names);
+  recursively_emit_prototype(root_node, str, disptable_names, prototype_names);
 
   if (cgen_debug) cout << "coding global text" << endl;
   code_global_text();
@@ -1065,14 +1067,18 @@ void CgenClassTable::recursively_emit_disptable(CgenNodeP node, ostream &s, std:
 
 }
 
-void CgenClassTable::recursively_emit_prototype(CgenNodeP node, ostream &s, std::vector<Symbol>& prototype_types) {
+void CgenClassTable::recursively_emit_prototype(CgenNodeP node, ostream &s,
+                                                std::vector<Symbol>& prototype_types,
+                                                std::vector<Symbol>& prototype_names) {
   size_t type_counter = 0;
 
   /* Fill up prototype_types with correct attributes. */
   std::vector<Symbol> types = class_info_map[node->name].attribute_types;
+  std::vector<Symbol> names = class_info_map[node->name].attribute_names;
   for (size_t i = 0; i < types.size(); i++) {
     type_counter++;
     prototype_types.push_back(types[i]);
+    prototype_names.push_back(names[i]);
   }
 
   emit_protobj_ref(node->name, s);
@@ -1087,6 +1093,7 @@ void CgenClassTable::recursively_emit_prototype(CgenNodeP node, ostream &s, std:
   /* Print out all attributes. NOTE: WE PRINT OUT STR INSTEAD OF CORRECT CONST */
   for (size_t i = 0; i < prototype_types.size(); i++) {
     Symbol type = prototype_types[i];
+    class_info_map[node->name].attribute_offset_map[prototype_names[i]] = i + 3;
     /* Set to default values. */
     if (type == Int) {
       IntEntry *entry = inttable.lookup_string("0");
@@ -1110,11 +1117,12 @@ void CgenClassTable::recursively_emit_prototype(CgenNodeP node, ostream &s, std:
   s << WORD << -1 << endl; /* Garbage Collection */
 
   for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
-      recursively_emit_prototype(child->hd(), s, prototype_types);
+      recursively_emit_prototype(child->hd(), s, prototype_types, prototype_names);
 
   /* Remove all added attributes. */
   for (size_t i = 0; i < type_counter; i++) {
     prototype_types.erase(prototype_types.begin() + (prototype_types.size() - 1));
+    prototype_names.erase(prototype_names.begin() + (prototype_names.size() - 1));
   }
 }
 
@@ -1126,14 +1134,12 @@ int CgenClassTable::attribute_offset(CgenNodeP class_node, Symbol attr_name) {
     return -1;
   }
   ClassInfo ci = class_info_map[class_node->get_name()];
-  for (int i = 0 ; i < ci.attribute_names.size() ; i++) {
-    if (ci.attribute_names[i] == attr_name)
-      return i + 3; // + 3 to account for class tag, object size, and disp pointer.
+  if (ci.attribute_offset_map.find(attr_name) == ci.attribute_offset_map.end()) {
+    cout << "No attribute with name " << attr_name << " in class " << class_node->get_name() << " found" << endl;
+    return -1;
   }
-  cout << "No attribute with name " << attr_name << " in class " << class_node->get_name() << " found" << endl;
-  return -1;
 
-
+  return ci.attribute_offset_map[attr_name];
 }
 
 Symbol CgenClassTable::get_class_name(int class_tag) {
@@ -1718,6 +1724,7 @@ void no_expr_class::code(method_class *method, ostream& s) {
 }
 
 void object_class::code(method_class *method, ostream& s) {
+  //cout << "Enters here and cur_class is " << cur_class->name << endl;
   /* Handle self case. */
   if (name == self) {
     emit_move(ACC, SELF, s);
@@ -1728,11 +1735,13 @@ void object_class::code(method_class *method, ostream& s) {
   
   /* Attribute. */
   if (offset == NULL) {
+    //cout << "offset is NULL so attribute for variable with name " << name << endl;
     int attr_offset = ct->attribute_offset(cur_class, name);
     emit_load(ACC, attr_offset, SELF, s);
     return;
   }
   /* Local */
+  //cout << "Looking for variable " << name << "at offset " << *offset << endl;
   emit_load(ACC, *offset, FP, s);
 }
 

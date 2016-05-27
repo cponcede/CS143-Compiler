@@ -16,6 +16,7 @@ public:
   std::vector<Symbol> attribute_names;
   std::vector<Symbol> method_names;
   std::vector<Symbol> method_definers;
+  std::map<Symbol, int> attribute_offset_map;
   int class_tag;
 };
 
@@ -55,7 +56,7 @@ private:
    void build_inheritance_tree();
    void set_relations(CgenNodeP nd);
    int first_pass(CgenNodeP node, ostream &s);
-   void recursively_emit_prototype(CgenNodeP node, ostream &s, std::vector<Symbol>& prototype_types);
+   void recursively_emit_prototype(CgenNodeP node, ostream &s, std::vector<Symbol>& prototype_types, std::vector<Symbol>& prototype_names);
    void recursively_emit_disptable(CgenNodeP node, ostream &s, std::vector<Symbol> disptable_names, std::vector<Symbol> disptable_definers);
    void emit_class_objTab();
    void emit_class_objTab_helper(CgenNodeP node);
