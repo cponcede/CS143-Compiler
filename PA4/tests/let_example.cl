@@ -6,8 +6,8 @@ class Main {
   main():Int { {
   	let b : Int <- 1 in
   		let c : Int in {
-  			c <- d + b;
-  			if not (c = 11) then a.fun() else 1 fi; 
+  			b <- d + c;
+  			if not (b = 10) then a.fun() else 1 fi; 
   		};
   	let x : Bool in {
   		x <- true_bool;

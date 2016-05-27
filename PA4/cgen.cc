@@ -1230,8 +1230,8 @@ void assign_class::code(method_class *method, ostream& s) {
     int attr_offset = ct->attribute_offset(cur_class, name);
     emit_store(ACC, attr_offset, SELF, s);
     if(cgen_Memmgr != GC_NOGC) {
-          emit_addiu(A1, SELF, attr_offset, s);
-          emit_jal("_GenGC_Assign", s);
+      emit_addiu(A1, SELF, attr_offset, s);
+      emit_jal("_GenGC_Assign", s);
     }
     return;
   }
@@ -1283,11 +1283,6 @@ void static_dispatch_class::code(method_class *method, ostream& s) {
   emit_load(T1, DISPTABLE_OFFSET, ACC, s);
   emit_load(T1, method_offset, T1, s);
   emit_jalr(T1, s);
-
-  /* Pop all arguments off the stack */
-  for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
-    emit_addiu(SP, SP, 4, s);
-  }
 
 }
 
@@ -1452,24 +1447,26 @@ void let_class::code(method_class *method, ostream& s) {
   /* Add new variable to store. */
   cur_class->store.enterscope();
 
-  if (init->get_type() != No_class) {
+  if (init->is_present()) {
     init->code(method, s);
   } else {
     /* Special default values. */
-    if (type_decl == Bool || type_decl == Int || type_decl == Str) {
-      s << LA << ACC << " ";
-      emit_protobj_ref(type_decl, s);
-      s << endl;
-      emit_jal("Object.copy", s);
-    } else {
+    if (type_decl == Int)
+      emit_load_int(ACC, inttable.lookup_string("0"), s);
+    else if (type_decl == Bool)
+      emit_load_bool(ACC, falsebool, s);
+    else if (type_decl == Str)
+      emit_load_string(ACC, stringtable.lookup_string(""), s);
+    else
       emit_load_imm(ACC, 0, s);
-    }
   }
+    
 
   /* Put value inside of ACC into new local variable */
   emit_push(ACC, s);
   int offset = method->get_new_offset();
   cur_class->store.addid(this->identifier, new int(offset));
+  //cout << "Adding new local variable " << identifier << " at offset " << offset << endl;
   emit_store(ACC, offset, FP, s);
 
   /* Emit code for body */
