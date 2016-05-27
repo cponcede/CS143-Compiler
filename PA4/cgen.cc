@@ -913,11 +913,12 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
   /* Generate init code for attributes. */
   for (int i = node->features->first(); node->features->more(i); i = node->features->next(i)) {
     if (!node->features->nth(i)->is_method()) {
-      if (node->features->nth(i)->get_init()->get_type() != No_type) {
+      if (node->features->nth(i)->get_init()->is_present()) {
         node->features->nth(i)->get_init()->code(init_method, s);
         int offset = attribute_offset(node, node->features->nth(i)->get_name());
         emit_store(ACC, offset, SELF, s);
       }
+      
     }
   }
 
@@ -1340,8 +1341,8 @@ void cond_class::code(method_class *method, ostream& s) {
   int false_label = ct->give_label();
   int end_label = ct->give_label();
 
-  emit_load(ACC, DEFAULT_OBJFIELDS, ACC, s);
-  emit_beqz(ACC, false_label, s);
+  emit_load(T1, DEFAULT_OBJFIELDS, ACC, s);
+  emit_beqz(T1, false_label, s);
   then_exp->code(method, s);
   emit_branch(end_label, s);
   emit_label_def(false_label, s);
@@ -1663,8 +1664,16 @@ void new__class::code(method_class *method, ostream& s) {
   Symbol type = type_name;
 
   /* TODO: Deal with self_Type. */
-  if (type == SELF_TYPE) type = cur_class->get_name();
+  if (type == SELF_TYPE) {
+    type = cur_class->get_name();
+    /* TODOS
+      1. Get class_tag from your SELF object.
+      2. Use the class_tag to point to the prototype object in objTable
+      3. Call Object.copy to make and return a copy of that
+      4. Use your pointer into the objTable to call the init of this type
+    */
 
+  }
   /* Find Object initialization information in class_objTab. */
   emit_partial_load_address(ACC, s);
   emit_protobj_ref(type, s);
