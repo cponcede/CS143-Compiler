@@ -1679,7 +1679,7 @@ void new__class::code(method_class *method, ostream& s) {
     emit_load(T2, 0, SELF, s);
     emit_sll(T2, T2, 3, s);
     emit_addu(T1, T1, T2, s);
-    emit_addiu(T1, T1, 4, s);
+    emit_load(T1, 4, T1, s);
     emit_jalr(T1, s);
     return;
   }
