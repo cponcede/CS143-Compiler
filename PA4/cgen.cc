@@ -917,6 +917,10 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
         node->features->nth(i)->get_init()->code(init_method, s);
         int offset = attribute_offset(node, node->features->nth(i)->get_name());
         emit_store(ACC, offset, SELF, s);
+        if(cgen_Memmgr != GC_NOGC) {
+          emit_addiu(A1, SELF, offset, s);
+          emit_jal("_GenGC_Assign", s);
+        }
       }
       
     }
@@ -1219,6 +1223,10 @@ void assign_class::code(method_class *method, ostream& s) {
   if (offset == NULL) {
     int attr_offset = ct->attribute_offset(cur_class, name);
     emit_store(ACC, attr_offset, SELF, s);
+    if(cgen_Memmgr != GC_NOGC) {
+          emit_addiu(A1, SELF, attr_offset, s);
+          emit_jal("_GenGC_Assign", s);
+    }
     return;
   }
 
