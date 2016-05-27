@@ -284,6 +284,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -310,6 +311,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -334,6 +336,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -358,6 +361,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -380,6 +384,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -402,6 +407,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -422,6 +428,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -448,6 +455,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -470,6 +478,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -492,6 +501,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -514,6 +524,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -536,6 +547,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -556,6 +568,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -578,6 +591,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -600,6 +614,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -622,6 +637,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -642,6 +658,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -662,6 +679,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -682,6 +700,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -702,6 +721,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -722,6 +742,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -742,6 +763,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -760,6 +782,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return false; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif
@@ -780,6 +803,7 @@ public:
    Expression copy_Expression();
    void dump(ostream& stream, int n);
    void code(method_class *, ostream&);
+   bool is_present() { return true; }
 #ifdef Expression_SHARED_EXTRAS
    Expression_SHARED_EXTRAS
 #endif

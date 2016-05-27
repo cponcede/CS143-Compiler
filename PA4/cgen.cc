@@ -913,11 +913,12 @@ void CgenClassTable::emit_object_inits(CgenNodeP node, ostream& s) {
   /* Generate init code for attributes. */
   for (int i = node->features->first(); node->features->more(i); i = node->features->next(i)) {
     if (!node->features->nth(i)->is_method()) {
-      if (node->features->nth(i)->get_init()->get_type() != No_type) {
+      if (node->features->nth(i)->get_init()->is_present()) {
         node->features->nth(i)->get_init()->code(init_method, s);
         int offset = attribute_offset(node, node->features->nth(i)->get_name());
         emit_store(ACC, offset, SELF, s);
       }
+      
     }
   }
 
@@ -1340,8 +1341,8 @@ void cond_class::code(method_class *method, ostream& s) {
   int false_label = ct->give_label();
   int end_label = ct->give_label();
 
-  emit_load(ACC, DEFAULT_OBJFIELDS, ACC, s);
-  emit_beqz(ACC, false_label, s);
+  emit_load(T1, DEFAULT_OBJFIELDS, ACC, s);
+  emit_beqz(T1, false_label, s);
   then_exp->code(method, s);
   emit_branch(end_label, s);
   emit_label_def(false_label, s);
