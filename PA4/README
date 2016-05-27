@@ -154,9 +154,15 @@ Instructions
 Write-up for PA4
 ----------------
 
-1.
+1. Data Structures:
 
-2.
+We used a large number of data structures in our code generation. To create all of the prototype objects as well as the dispatch table we had a "class_info_map." Here, we stored all information about attribute type/names, as well as method names/overrides. Each entry contains only the attributes/methods given in its own class, which we then use in a recursive walk through our inheritance graph to create the appropriate tables. In this struct, we also used a vector as a sort of map from class tag to type name, which we refered to later. 
+
+In addition to this struct, we also used TODO: FINISH THIS> THIS IS CONFUSING AF
+
+2. Code Breakdown:
+
+Our code runs in two sections. The first section
 
 3. Testing Methodology:
 
