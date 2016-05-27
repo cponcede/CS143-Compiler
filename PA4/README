@@ -190,9 +190,40 @@ CgenNodeP cur_class:
 Although this class was provided, we store a static global node that is pointing the class
 that we are currently evaluating.
 
+
+
+
+
+
 2. Code Breakdown:
 
-Our code runs in two sections. The first section
+Our code runs in two sections. The first section preforms all "preprocessing" of
+sorts. The overview of our process can be seen by looking into our
+CgenClassTable's code method. Our first few methods create the name table,
+object table, each prototype object, and each dispatch table. We do this all
+recursively by walking down the inheritance graph created in CgenClassTable. All
+of this code is necessary to dive into the actual code generation.
+
+In the second part of our program, we recursively walk through our AST to
+generate all of our code. Here, we dive down, using something very similar to a
+stack machine (with a couple extra registers) to generate valid assembly code.
+The majority of the work came in this section. All rules follow the operational
+semantics laid out in the cool manual.
+
+The hardest part of this assignment was dealing with dynamic typing. In our case
+statement, if the expression type was self type, we had to dynamically figure
+out the tightest bounded class laid out in the case statement. This involved
+sorting our list of classes in the statement by depth in the inheritance tree
+(since we give class tags in a pre order traversal, a subclass will always have
+a larger class tag than its super class, so we sort them by class tags highest
+to lowest). Then, we get the range of the classtags that can match (again, the
+pre order traversal guarantees that the tags of subchildren will be in one
+contiguous range), and choose the correct case statement based on being in the
+matching range. Since child classes are listed before parent classes, we will
+always get the tightest match.
+
+
+
 
 3. Testing Methodology:
 
