@@ -1017,11 +1017,6 @@ void CgenClassTable::code()
 
   emit_object_inits(root_node, str);
   emit_class_methods(root_node, str);
-//                 Add your code to emit
-//                   - object initializer
-//                   - the class methods
-//                   - etc...
-
 }
 
 
@@ -1136,8 +1131,12 @@ int CgenClassTable::attribute_offset(CgenNodeP class_node, Symbol attr_name) {
 
 }
 
+Symbol CgenClassTable::get_class_name(int class_tag) {
+  return class_tags[class_tag];
+}
 
-void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
+
+int CgenClassTable::first_pass(CgenNodeP node, ostream &s)
 {
   /* Form Map. */
   ClassInfo ci;
@@ -1164,8 +1163,13 @@ void CgenClassTable::first_pass(CgenNodeP node, ostream &s)
   // cout << "definers is sized: " << class_info_map[node->name].method_names.size()
   //      << " and methods is sized: " << class_info_map[node->name].method_definers.size() << endl << endl;
   
+  int result = 0;
   for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
-      first_pass(child->hd(), s);
+      result = result + 1 + first_pass(child->hd(), s);
+  num_subclass_map[node->name] = result;
+  cout << "Class " << node->name << " has " << result << " subclasses!" << endl;
+  return result;
+
 }
 
 
@@ -1367,7 +1371,6 @@ void loop_class::code(method_class *method, ostream& s) {
 
 void typcase_class::code(method_class *method, ostream& s) {
   expr->code(method, s);
-  Symbol type = expr->get_type();
 
   /* Check for case on void object. */
   int valid_statement_label = ct->give_label();
@@ -1380,14 +1383,55 @@ void typcase_class::code(method_class *method, ostream& s) {
   emit_jal("_case_abort2", s);
   emit_branch(done_label, s);
 
+  /* Use ct->num_subclasses_map */
+
+  /* TODOs:
+    1. While creating our class tags, create a map from Symbol (type) to num_subclasses(type)
+    2. for each branch, add to branch_vec
+    3. Sort branch_vec by class_tags[branch->type_decl] from highest to lowest
+    4. Iterature through branch_vec and for each branch:
+        a. Jump to the next label if dynamic_class_tag is less than class_tags[branch->type_decl] or greater than class)_tags[branch->type_decl] + num_subclasses
+        b. generate code
+        c. jump to done_label
+        c. generate next branch's label
+
+
+  */
+
 
   /* Valid Case Statement. */
   emit_label_def(valid_statement_label, s);
-  std::vector<Symbol> possible_types;
+
+  emit_load(ACC, TAG_OFFSET, ACC, s);
+  emit_push(ACC, s);
+
+  int start_label = ct->give_label();
+  emit_label_def(start_label, s);
+
+  /* Create a label for each branch and store in label_vec */
+  std::vector<int> label_vec;
+  for (int i = cases->first(); cases->more(i); i = cases->next(i))
+    label_vec.push_back(ct->give_label());
+
+  int j = 0;
   for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
     branch_class *branch = (branch_class *)cases->nth(i);
-    possible_types.push_back(branch->type_decl);
+    Symbol type = branch->type_decl;
+    int class_tag = class_info_map[type].class_tag;
+    emit_load_imm(T2, class_tag, s);
+    emit_load(T1, 1, SP, s);
+    emit_bne(T1, T2, label_vec[j], s);
+    branch->expr->code(method, s);
+    emit_branch(done_label, s);
+    emit_label_def(label_vec[j++], s);
   }
+
+  /* Code to update class_tag to be superclass's class_tag */
+  Symbol class_name = class_tags[]
+  /* 
+
+
+
 
   Symbol found_type = No_type;
   int branch_index = -1;

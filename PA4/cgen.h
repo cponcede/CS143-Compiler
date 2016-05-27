@@ -28,7 +28,6 @@ typedef CgenNode *CgenNodeP;
 class CgenClassTable : public SymbolTable<Symbol,CgenNode> {
 private:
    List<CgenNode> *nds;
-   std::vector<Symbol> class_tags;
    ostream& str;
    int stringclasstag;
    int intclasstag;
@@ -55,7 +54,7 @@ private:
    void install_classes(Classes cs);
    void build_inheritance_tree();
    void set_relations(CgenNodeP nd);
-   void first_pass(CgenNodeP node, ostream &s);
+   int first_pass(CgenNodeP node, ostream &s);
    void recursively_emit_prototype(CgenNodeP node, ostream &s, std::vector<Symbol>& prototype_types);
    void recursively_emit_disptable(CgenNodeP node, ostream &s, std::vector<Symbol> disptable_names, std::vector<Symbol> disptable_definers);
    void emit_class_objTab();
@@ -72,10 +71,14 @@ public:
    int give_class_tag();
    int give_label();
    Symbol get_parent(Symbol);
+   Symbol get_class_name(int class_tag);
    void code();
    CgenNodeP root();
    std::map<Symbol, ClassInfo> class_info_map;
    std::map<Symbol, std::vector<Symbol> > class_to_method_map;
+   std::map<Symbol, int> num_subclass_map;
+   std::vector<Symbol> class_tags;
+
 
 };
 
