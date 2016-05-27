@@ -629,9 +629,9 @@ void CgenClassTable::code_constants()
 }
 
 
-#define STRCLASSTAG 4
-#define BOOLCLASSTAG 3
-#define INTCLASSTAG 2
+#define STRCLASSTAG 5
+#define BOOLCLASSTAG 4
+#define INTCLASSTAG 3
 
 
 CgenClassTable::CgenClassTable(Classes classes, ostream& s) : nds(NULL) , str(s)
@@ -956,7 +956,7 @@ void CgenClassTable::generate_method_code (CgenNodeP node, method_class *method,
 
   /* Add all formals to the  symbol table */
   for (int i = method->formals->first(); method->formals->more(i); i = method->formals->next(i)) {
-    int offset = i - method->formals->first() + 1; // TODO: figure out if this should have a +1
+    int offset = method->formals->len() - i + method->formals->first() - 1; 
     cur_class->store.addid(method->formals->nth(i)->get_name(), new int(offset));
     //cout << "Adding formal with name " << method->formals->nth(i)->get_name() << " at offset " << offset << " in cur_class " << cur_class->name << endl;
     if (cgen_debug)
@@ -1242,16 +1242,9 @@ void assign_class::code(method_class *method, ostream& s) {
 
 void static_dispatch_class::code(method_class *method, ostream& s) {
 
-  std::stack<Expression> expression_stack;
   for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
-    expression_stack.push(actual->nth(i));
-  }
-
-  while (!expression_stack.empty()) {
-    Expression arg = expression_stack.top();
-    expression_stack.pop();
-    arg->code(method, s);
-    emit_push(ACC, s);
+    actual->nth(i)->code(method, s);
+    emit_push(ACC, s);  
   }
 
   /* Calling object. */
@@ -1300,16 +1293,9 @@ void static_dispatch_class::code(method_class *method, ostream& s) {
 
 void dispatch_class::code(method_class *method, ostream& s) {
 
-  std::stack<Expression> expression_stack;
   for (int i = actual->first(); actual->more(i); i = actual->next(i)) {
-    expression_stack.push(actual->nth(i));
-  }
-
-  while (!expression_stack.empty()) {
-    Expression arg = expression_stack.top();
-    expression_stack.pop();
-    arg->code(method, s);
-    emit_push(ACC, s);
+    actual->nth(i)->code(method, s);
+    emit_push(ACC, s);  
   }
 
   /* Calling object. */
