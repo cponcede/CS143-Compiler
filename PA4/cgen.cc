@@ -1167,7 +1167,6 @@ int CgenClassTable::first_pass(CgenNodeP node, ostream &s)
   for (List<CgenNode> *child = node->get_children(); child; child = child->tl())
       result = result + 1 + first_pass(child->hd(), s);
   num_subclass_map[node->name] = result;
-  cout << "Class " << node->name << " has " << result << " subclasses!" << endl;
   return result;
 
 }
@@ -1383,92 +1382,62 @@ void typcase_class::code(method_class *method, ostream& s) {
   emit_jal("_case_abort2", s);
   emit_branch(done_label, s);
 
-  /* Use ct->num_subclasses_map */
-
-  /* TODOs:
-    1. While creating our class tags, create a map from Symbol (type) to num_subclasses(type)
-    2. for each branch, add to branch_vec
-    3. Sort branch_vec by class_tags[branch->type_decl] from highest to lowest
-    4. Iterature through branch_vec and for each branch:
-        a. Jump to the next label if dynamic_class_tag is less than class_tags[branch->type_decl] or greater than class)_tags[branch->type_decl] + num_subclasses
-        b. generate code
-        c. jump to done_label
-        c. generate next branch's label
-
-
-  */
-
-
   /* Valid Case Statement. */
   emit_label_def(valid_statement_label, s);
 
-  emit_load(ACC, TAG_OFFSET, ACC, s);
-  emit_push(ACC, s);
+  emit_load(T1, TAG_OFFSET, ACC, s);
+  emit_push(T1, s);
 
   int start_label = ct->give_label();
   emit_label_def(start_label, s);
 
   /* Create a label for each branch and store in label_vec */
   std::vector<int> label_vec;
-  for (int i = cases->first(); cases->more(i); i = cases->next(i))
-    label_vec.push_back(ct->give_label());
-
-  int j = 0;
+  std::vector<branch_class *> branch_vec;
   for (int i = cases->first(); cases->more(i); i = cases->next(i)) {
     branch_class *branch = (branch_class *)cases->nth(i);
-    Symbol type = branch->type_decl;
-    int class_tag = class_info_map[type].class_tag;
-    emit_load_imm(T2, class_tag, s);
-    emit_load(T1, 1, SP, s);
-    emit_bne(T1, T2, label_vec[j], s);
-    branch->expr->code(method, s);
-    emit_branch(done_label, s);
-    emit_label_def(label_vec[j++], s);
+    label_vec.push_back(ct->give_label());
+    branch_vec.push_back(branch);
   }
 
-  /* Code to update class_tag to be superclass's class_tag */
-  Symbol class_name = class_tags[]
-  /* 
-
-
-
-
-  Symbol found_type = No_type;
-  int branch_index = -1;
-
-  /* Determine closest type to expr type. */
-  while (found_type == No_type && type != No_class) {
-    for (int i = 0; i < possible_types.size(); i++) {
-      if (type == possible_types[i]) {
-        found_type = type;
-        branch_index = i;
-        break;
+  /* Sort branch_vec from highest class_tag to lowest */
+  for(int i = 0; i < cases->len(); i++) {
+    for(int j = 1; j < cases->len(); j++) {
+      int class_tag = ct->class_info_map[branch_vec[j]->type_decl].class_tag;
+      int prev_class_tag = ct->class_info_map[branch_vec[j-1]->type_decl].class_tag;
+      if(class_tag > prev_class_tag) {
+        branch_class *temp = branch_vec[j];
+        branch_vec[j] = branch_vec[j-1];
+        branch_vec[j-1] = temp;
       }
     }
-    type = ct->get_parent(type);
   }
 
-  if (found_type == No_type) {
-    emit_jal("_case_abort", s);
-    emit_label_def(done_label, s);
-    return;
+  /* Emit branches. */
+  for (int i = 0 ; i < branch_vec.size() ; i++) {
+    branch_class *branch = branch_vec[i];
+    Symbol type = branch->type_decl;
+    int begin_class_tag = ct->class_info_map[branch_vec[i]->type_decl].class_tag;
+    int end_class_tag = ct->class_info_map[branch_vec[i]->type_decl].class_tag + ct->num_subclass_map[type];
+    emit_load(T1, 1, SP, s);
+    emit_blti(T1, begin_class_tag, label_vec[i], s);
+    emit_bgti(T1, end_class_tag, label_vec[i], s);
+
+    /* Execute actual branch code. */
+    int offset = method->get_new_offset();
+    cur_class->store.enterscope();
+    emit_push(T1, s);
+    cur_class->store.addid(branch->name, new int(offset));
+    branch->expr->code(method, s);
+    emit_addiu(SP, SP, 4, s);
+    method->restore_offset();
+    cur_class->store.exitscope();
+    emit_branch(done_label, s);
+    emit_label_def(label_vec[i], s);
   }
-
-  branch_class *branch = (branch_class *)cases->nth(branch_index);
-
-  /* Store variable. */
-  cur_class->store.enterscope();
-  emit_push(ACC, s);
-  int offset = method->get_new_offset();
-  cur_class->store.addid(branch->name, new int(offset));
-
-  branch->expr->code(method, s);
-
-  method->restore_offset();
-  cur_class->store.exitscope();
-  emit_addiu(SP, SP, 4, s);
-
+  emit_jal("_case_abort", s);
   emit_label_def(done_label, s);
+  emit_addiu(SP, SP, 4, s);
 }
 
 void block_class::code(method_class *method, ostream& s) {

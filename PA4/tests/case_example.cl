@@ -1,21 +1,30 @@
 class Main {
 	d : Int <- 10;
-	a : A;
+	io : IO <- new IO;
 	x : Int <- 0;
 	true_bool : Bool <- true;
 
   main():Int { {
-  	case d + 1 of
-  		y : Object => a.fun();
-  		b : Bool => a.fun();
-  		c : Int => x <- c;
+  	case d of
+      a : A => io.out_string("Chose A branch");
+  		b : Bool => io.out_string("Chose Bool branch");
+  		c : Int => io.out_string("Chose Int branch");
+      f: B => io.out_string("Chose B branch");
   	esac;
-  	if x = 11 then 1 else a.fun() fi;
+    5;
   }};
 
 };
 
 class A {
-	b : Int;
-	fun() : Int {b};
+
 };
+
+class B inherits A {
+
+};
+
+class C inherits B {
+
+};
+
