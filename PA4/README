@@ -156,9 +156,39 @@ Write-up for PA4
 
 1. Data Structures:
 
-We used a large number of data structures in our code generation. To create all of the prototype objects as well as the dispatch table we had a "class_info_map." Here, we stored all information about attribute type/names, as well as method names/overrides. Each entry contains only the attributes/methods given in its own class, which we then use in a recursive walk through our inheritance graph to create the appropriate tables. In this struct, we also used a vector as a sort of map from class tag to type name, which we refered to later. 
+We used a large number of data structures in our code generation. Below is a list of all of them:
 
-In addition to this struct, we also used TODO: FINISH THIS> THIS IS CONFUSING AF
+class ClassInfo:
+A class that contains information about what is contained inside of each class definition. This
+includes attribute names, attribute types, method_names, the names of the class that defined each
+method, and a map from attribute name to the correct offset of that attribute in the actual object.
+In addition, the class_tag for that class is saved within the ClassInfo for the class.
+
+class_info_map:
+This map within CgenClassTable is used to get from a class name to the ClassInfo object for
+that class.
+
+CgenClassTable:
+
+This class, which was provided but has been extended by us, is used to look up all required
+information related to classes while performing code generation. It can be used to lookup
+class inheritance information, the methods defined within each class (through the class_to_method_map
+member), the corresponding class name for a given class tag. In addition, the constructor of this
+object is what starts the code generation process.
+
+CgenClassTable also includes the num_subclass_map, which maps the name of a class to the
+number of subclasses that are defined for it. This is used to appropriately account for
+subclasses in case statements. Because class tags are given out in a recursive dive of the
+inheritance graph, a class will always have a smaller class tag than any of its subclasses.
+This meant that all n possible subclasses of a class with classtag i have classtags in the range
+[i, i+n].
+
+Lastly, the CgenClassTable distributes label identifiers that are used during code generation.
+
+CgenNodeP cur_class:
+
+Although this class was provided, we store a static global node that is pointing the class
+that we are currently evaluating.
 
 2. Code Breakdown:
 
