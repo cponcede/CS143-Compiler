@@ -1662,8 +1662,26 @@ void new__class::code(method_class *method, ostream& s) {
   /* Get correct Object type. */
   Symbol type = type_name;
 
-  /* TODO: Deal with self_Type. */
-  if (type == SELF_TYPE) type = cur_class->get_name();
+  if (type == SELF_TYPE) {
+    /* Get the correct offset in Object Table for prototype object. */
+    emit_partial_load_address(T1, s);
+    s << CLASSOBJTAB << endl;
+    emit_load(T2, 0, SELF, s);
+    emit_sll(T2, T2, 3, s);
+    emit_addu(T1, T1, T2, s);
+    emit_load(ACC, 0, T1, s);
+    emit_jal("Object.copy", s);
+
+    /* Get the correct offset in Object Table for initializer. */
+    emit_partial_load_address(T1, s);
+    s << CLASSOBJTAB << endl;
+    emit_load(T2, 0, SELF, s);
+    emit_sll(T2, T2, 3, s);
+    emit_addu(T1, T1, T2, s);
+    emit_addiu(T1, T1, 4, s);
+    emit_jalr(T1, s);
+    return;
+  }
 
   /* Find Object initialization information in class_objTab. */
   emit_partial_load_address(ACC, s);
